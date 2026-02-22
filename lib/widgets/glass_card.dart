@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import '../theme/app_theme.dart';
+=======
+>>>>>>> 26ab9ee (Added UI from Antigravity)
 
 class GlassCard extends StatelessWidget {
   final Widget child;
@@ -34,15 +37,26 @@ class GlassCard extends StatelessWidget {
             width: width,
             height: height,
             decoration: BoxDecoration(
+<<<<<<< HEAD
               color: color ?? AppColors.glassBg,
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
                 color: AppColors.glassBorder,
+=======
+              color: color ?? Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+>>>>>>> 26ab9ee (Added UI from Antigravity)
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
+<<<<<<< HEAD
                   color: AppColors.shadow,
+=======
+                  color: Colors.black.withOpacity(0.2),
+>>>>>>> 26ab9ee (Added UI from Antigravity)
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
