@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-import 'package:flutter/material.dart';
-import 'theme/app_theme.dart';
-import 'screens/main_screen.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-=======
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'theme.dart';
@@ -14,7 +6,6 @@ import 'map_screen.dart';
 import 'profile_screen.dart';
 
 void main() {
->>>>>>> 26ab9ee (Added UI from Antigravity)
   runApp(const HydroVisionApp());
 }
 
@@ -25,11 +16,6 @@ class HydroVisionApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'HydroVision',
-<<<<<<< HEAD
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      home: const MainScreen(),
-=======
       theme: AppTheme.darkTheme,
       home: const MainNavigationScreen(),
       debugShowCheckedModeBanner: false,
@@ -247,7 +233,6 @@ class _AlertsPlaceholder extends StatelessWidget {
           ),
         ),
       ),
->>>>>>> 26ab9ee (Added UI from Antigravity)
     );
   }
 }
