@@ -37,12 +37,33 @@
 <body>
   <!-- Inject Google Maps script securely using Dart environment variables -->
   <script>
-    window.addEventListener('load', function (ev) {
-      if (typeof window.GOOGLE_MAPS_API_KEY !== 'undefined') {
-        var script = document.createElement('script');
-        script.src = "https://maps.googleapis.com/maps/api/js?key=" + window.GOOGLE_MAPS_API_KEY;
-        document.head.appendChild(script);
-      } else {
+    window.addEventListener('load', async function (ev) {
+      try {
+        const response = await fetch('assets/.env');
+        if (response.ok) {
+          const text = await response.text();
+          const lines = text.split('\n');
+          let apiKey = null;
+          for (const line of lines) {
+            if (line.startsWith('GOOGLE_MAPS_API_KEY=')) {
+              apiKey = line.split('=')[1].trim();
+              break;
+            }
+          }
+          var script = document.createElement('script');
+          if (apiKey && apiKey !== 'your_api_key_here') {
+            script.src = "https://maps.googleapis.com/maps/api/js?key=" + apiKey;
+          } else {
+            script.src = "https://maps.googleapis.com/maps/api/js";
+          }
+          document.head.appendChild(script);
+        } else {
+          var script = document.createElement('script');
+          script.src = "https://maps.googleapis.com/maps/api/js";
+          document.head.appendChild(script);
+        }
+      } catch (e) {
+        console.error("Failed to load .env:", e);
         var script = document.createElement('script');
         script.src = "https://maps.googleapis.com/maps/api/js";
         document.head.appendChild(script);
