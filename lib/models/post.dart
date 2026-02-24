@@ -10,8 +10,8 @@ class Post {
   int reposts;
   final String floodSeverity;
 
-  // Verification
-  int userVerifications; // 3 needed for full user verification
+  // Verification — stores handles of users who verified this post
+  final Set<String> verifiedByUsers;
   bool adminVerified;
   bool aiVerified;
 
@@ -29,17 +29,29 @@ class Post {
     required this.comments,
     required this.reposts,
     required this.floodSeverity,
-    this.userVerifications = 0,
+    Set<String>? verifiedByUsers,
     this.adminVerified = false,
     this.aiVerified = false,
     this.repostedBy,
-  });
+  }) : verifiedByUsers = verifiedByUsers ?? {};
 
-  bool get userVerified => userVerifications >= 3;
+  /// At least 3 distinct users have verified this post
+  bool get userVerified => verifiedByUsers.length >= 3;
+
+  /// Count of user verifications
+  int get userVerificationCount => verifiedByUsers.length;
 
   bool get fullyVerified => userVerified && adminVerified && aiVerified;
 
   factory Post.fromCsvRow(List<dynamic> row) {
+    // Parse legacy int field for userVerifications (cols[10]) to seed a set
+    final verifiedCount = int.tryParse(row.length > 10 ? row[10].toString() : '0') ?? 0;
+    // Seed with placeholder names so pre-existing CSV verifications display correctly
+    final Set<String> verifiedSet = {};
+    for (int i = 0; i < verifiedCount && i < 3; i++) {
+      verifiedSet.add('@seed_user_$i');
+    }
+
     return Post(
       id: row[0].toString(),
       authorName: row[1].toString(),
@@ -51,7 +63,7 @@ class Post {
       comments: int.tryParse(row[7].toString()) ?? 0,
       reposts: int.tryParse(row[8].toString()) ?? 0,
       floodSeverity: row[9].toString(),
-      userVerifications: int.tryParse(row.length > 10 ? row[10].toString() : '0') ?? 0,
+      verifiedByUsers: verifiedSet,
       adminVerified: (row.length > 11 ? row[11].toString().toLowerCase() : 'false') == 'true',
       aiVerified: (row.length > 12 ? row[12].toString().toLowerCase() : 'false') == 'true',
       repostedBy: (row.length > 13 && row[13].toString().trim().isNotEmpty) ? row[13].toString() : null,
@@ -70,7 +82,7 @@ class Post {
       comments: comments,
       reposts: reposts,
       floodSeverity: floodSeverity,
-      userVerifications: userVerifications,
+      verifiedByUsers: Set.from(verifiedByUsers),
       adminVerified: adminVerified,
       aiVerified: aiVerified,
       repostedBy: repostedByUser,

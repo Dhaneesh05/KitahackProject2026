@@ -5,6 +5,7 @@ import 'home_screen.dart';
 import 'map_screen.dart';
 import 'feed_screen.dart';
 import 'profile_screen.dart';
+import 'rewards_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,6 +21,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     MapScreen(),
     FeedScreen(),
+    RewardsScreen(),
     ProfileScreen(),
   ];
 
@@ -67,7 +69,8 @@ class _MainScreenState extends State<MainScreen> {
                       _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'HOME', index: 0, selectedIndex: _selectedIndex, onTap: _onTap),
                       _NavItem(icon: Icons.map_outlined, activeIcon: Icons.map_rounded, label: 'MAP', index: 1, selectedIndex: _selectedIndex, onTap: _onTap),
                       _NavItem(icon: Icons.feed_outlined, activeIcon: Icons.feed_rounded, label: 'FEED', index: 2, selectedIndex: _selectedIndex, onTap: _onTap),
-                      _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'PROFILE', index: 3, selectedIndex: _selectedIndex, onTap: _onTap),
+                      _NavItem(icon: Icons.emoji_events_outlined, activeIcon: Icons.emoji_events_rounded, label: 'REWARDS', index: 3, selectedIndex: _selectedIndex, onTap: _onTap),
+                      _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'PROFILE', index: 4, selectedIndex: _selectedIndex, onTap: _onTap),
                     ],
                   ),
                 ),

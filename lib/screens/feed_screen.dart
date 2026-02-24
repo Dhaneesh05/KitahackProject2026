@@ -125,6 +125,8 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => _NewPostSheet(onPost: (post) {
         setState(() => _store.posts.insert(0, post));
+        // Award points for submitting a report
+        _store.addPoints(_store.currentUser, 50, 'Submitted a flood report', relatedPostId: post.id);
       }),
     );
   }
@@ -249,7 +251,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
       timestamp: 'just now',
       likes: 0, comments: 0, reposts: 0,
       floodSeverity: _severity,
-      userVerifications: 0, adminVerified: false, aiVerified: false,
+      adminVerified: false, aiVerified: false,
     );
     widget.onPost(post);
     Navigator.pop(context);
