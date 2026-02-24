@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.2
+  sdk: ^3.6.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -34,14 +34,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  google_maps_flutter: ^2.14.2
+  google_maps_flutter: ^2.12.3
   firebase_core: ^4.4.0
   cloud_firestore: ^6.1.2
   firebase_auth: ^6.1.4
   geolocator: ^14.0.2
-  image_picker: ^1.2.1
+  image_picker: ^1.1.2
   google_generative_ai: ^0.4.7
   flutter_dotenv: ^6.0.0
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +72,7 @@ flutter:
   # Add .env to your assets so it can be read at runtime
   assets:
     - .env
+    - assets/data/
     
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
