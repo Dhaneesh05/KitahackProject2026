@@ -11,7 +11,8 @@ void main() async {
   await dotenv.load(fileName: ".env");
   
   if (kIsWeb) {
-    js.context['GOOGLE_MAPS_API_KEY'] = dotenv.env['GOOGLE_MAPS_API_KEY'];
+    // The web/index.html is now fetching the .env directly to inject the maps script.
+    // js.context['GOOGLE_MAPS_API_KEY'] = dotenv.env['GOOGLE_MAPS_API_KEY'];
   }
   
   runApp(const HydroVisionApp());
