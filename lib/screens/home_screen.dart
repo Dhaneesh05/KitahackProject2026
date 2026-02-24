@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../services/ai_vision_service.dart';
 import '../services/flood_prediction_service.dart';
+import '../services/storage_service.dart';
+import '../services/database_service.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -32,12 +34,12 @@ class HomeScreen extends StatelessWidget {
         if (context.mounted) Navigator.pop(context);
 
         if (context.mounted) {
-          // Show AI Analysis Results
+          // Show AI Analysis Results and pass the XFile object itself
           showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
-            builder: (context) => _AnalysisResultSheet(result: result, imagePath: photo.name),
+            builder: (context) => _AnalysisResultSheet(result: result, imageFile: photo),
           );
         }
       }
@@ -687,22 +689,60 @@ class _RecentReportItem extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────
-//  AI Analysis Result Sheet
-// ─────────────────────────────────────────────────────
-class _AnalysisResultSheet extends StatelessWidget {
+class _AnalysisResultSheet extends StatefulWidget {
   final Map<String, dynamic> result;
-  final String imagePath;
+  final XFile imageFile;
 
   const _AnalysisResultSheet({
     required this.result,
-    required this.imagePath,
+    required this.imageFile,
   });
 
   @override
+  State<_AnalysisResultSheet> createState() => _AnalysisResultSheetState();
+}
+
+class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
+  bool _isSubmitting = false;
+
+  Future<void> _submitToFirebase(BuildContext context) async {
+    setState(() => _isSubmitting = true);
+    try {
+      // 1. Upload to Storage
+      final photoUrl = await StorageService().uploadDrainPhoto(widget.imageFile, 'user_resident_123');
+      
+      // 2. Write to Database
+      final severity = widget.result['severity'] ?? 'Unknown';
+      final material = widget.result['material'] ?? 'Unknown';
+
+      await DatabaseService().submitReport({
+        'userId': 'user_resident_123', // Hardcoded for demo Resident
+        'imageUrl': photoUrl,
+        'severityScore': severity,
+        'debrisType': material,
+      });
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report submitted successfully to Firebase!'), backgroundColor: AppColors.teal),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Firebase Error: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final severity = result['severity'] ?? 'Unknown';
-    final material = result['material'] ?? 'Unknown';
+    final severity = widget.result['severity'] ?? 'Unknown';
+    final material = widget.result['material'] ?? 'Unknown';
     
     Color severityColor = AppColors.teal;
     if (severity == 'High' || severity == 'Error') severityColor = Colors.redAccent;
@@ -790,14 +830,14 @@ class _AnalysisResultSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Analyzed image: $imagePath',
+            'Analyzed image: ${widget.imageFile.name}',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isSubmitting ? null : () => _submitToFirebase(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.teal,
                 foregroundColor: Colors.white,
@@ -805,7 +845,9 @@ class _AnalysisResultSheet extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text('SUBMIT REPORT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+              child: _isSubmitting 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('SUBMIT REPORT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
             ),
           ),
           const SizedBox(height: 16),
