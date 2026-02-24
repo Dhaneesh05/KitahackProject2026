@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../services/ai_vision_service.dart';
 import '../services/flood_prediction_service.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -202,6 +203,17 @@ class _SettingsDrawer extends StatelessWidget {
               },
             ),
             const Spacer(),
+            const Divider(height: 1, thickness: 1, indent: 24, endIndent: 24),
+            const SizedBox(height: 8),
+            _DrawerItem(
+              icon: Icons.logout_rounded,
+              title: 'Logout',
+              onTap: () {
+                Navigator.of(context, rootNavigator: true).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              },
+            ),
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: Text(

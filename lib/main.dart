@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:js' as js;
 import 'theme/app_theme.dart';
-import 'screens/main_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +26,7 @@ class HydroVisionApp extends StatelessWidget {
       title: 'HydroVision',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const MainScreen(),
+      home: const LoginScreen(),
     );
   }
 }
