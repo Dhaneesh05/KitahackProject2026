@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
+import 'feed_screen.dart';
 import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -18,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     HomeScreen(),
     MapScreen(),
-    _AlertsPlaceholder(),
+    FeedScreen(),
     ProfileScreen(),
   ];
 
@@ -65,7 +66,7 @@ class _MainScreenState extends State<MainScreen> {
                     children: [
                       _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'HOME', index: 0, selectedIndex: _selectedIndex, onTap: _onTap),
                       _NavItem(icon: Icons.map_outlined, activeIcon: Icons.map_rounded, label: 'MAP', index: 1, selectedIndex: _selectedIndex, onTap: _onTap),
-                      _NavItem(icon: Icons.notifications_outlined, activeIcon: Icons.notifications_rounded, label: 'ALERTS', index: 2, selectedIndex: _selectedIndex, onTap: _onTap),
+                      _NavItem(icon: Icons.feed_outlined, activeIcon: Icons.feed_rounded, label: 'FEED', index: 2, selectedIndex: _selectedIndex, onTap: _onTap),
                       _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'PROFILE', index: 3, selectedIndex: _selectedIndex, onTap: _onTap),
                     ],
                   ),
