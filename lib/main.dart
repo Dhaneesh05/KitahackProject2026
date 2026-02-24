@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:js' as js;
 import 'theme/app_theme.dart';
 import 'screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  
+  if (kIsWeb) {
+    js.context['GOOGLE_MAPS_API_KEY'] = dotenv.env['GOOGLE_MAPS_API_KEY'];
+  }
+  
   runApp(const HydroVisionApp());
 }
 

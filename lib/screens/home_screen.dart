@@ -1,26 +1,63 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+import '../services/ai_vision_service.dart';
+import '../services/flood_prediction_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  void _onReport(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Opening camera to report drain...'),
-        backgroundColor: AppColors.teal,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+  // ── AI Vision Report Function ──────────────────────────────────────────
+  Future<void> _onReport(BuildContext context) async {
+    final ImagePicker picker = ImagePicker();
+    
+    try {
+      final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+      
+      if (photo != null && context.mounted) {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator(color: AppColors.teal)),
+        );
+
+        // Analyze image with Gemini
+        final result = await AiVisionService().analyzeDrainImage(photo);
+        
+        // Close loading indicator
+        if (context.mounted) Navigator.pop(context);
+
+        if (context.mounted) {
+          // Show AI Analysis Results
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            isScrollControlled: true,
+            builder: (context) => _AnalysisResultSheet(result: result, imagePath: photo.name),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to perform analysis: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
+      drawer: _SettingsDrawer(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -116,6 +153,104 @@ class HomeScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────
+//  Settings Drawer
+// ─────────────────────────────────────────────────────
+class _SettingsDrawer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: AppColors.scaffoldBg,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _DrawerItem(
+              icon: Icons.lock_outline,
+              title: 'Privacy',
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Navigate to Privacy
+              },
+            ),
+            _DrawerItem(
+              icon: Icons.accessibility_new_outlined,
+              title: 'Accessibility',
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Navigate to Accessibility
+              },
+            ),
+            _DrawerItem(
+              icon: Icons.description_outlined,
+              title: 'Terms & Conditions',
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Navigate to Terms
+              },
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                'HydroVision v1.0.0',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  const _DrawerItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+      leading: Icon(icon, color: AppColors.teal, size: 24),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      trailing: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+      onTap: onTap,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
 //  App Header
 // ─────────────────────────────────────────────────────
 class _AppHeader extends StatelessWidget {
@@ -161,7 +296,9 @@ class _AppHeader extends StatelessWidget {
         GlassCard(
           padding: const EdgeInsets.all(10),
           borderRadius: 14,
-          onTap: () {},
+          onTap: () {
+            Scaffold.of(context).openDrawer();
+          },
           child: Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
         ),
       ],
@@ -175,117 +312,138 @@ class _AppHeader extends StatelessWidget {
 class _FloodRiskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tag row
-          Row(
-            children: [
-              Icon(Icons.water_drop_outlined, color: AppColors.teal, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'ECOSYSTEM',
-                style: TextStyle(
-                  fontSize: 11,
-                  letterSpacing: 2.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              // LIVE badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.tealLight,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'LIVE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                    color: AppColors.teal,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Flood Risk Forecast',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.5,
+    return FutureBuilder<Map<String, dynamic>>(
+      future: FloodPredictionService().getTodayFloodRisk(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return GlassCard(
+            padding: const EdgeInsets.all(40),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.teal),
             ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.location_on_outlined, color: AppColors.textMuted, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                'Downtown District, Zone 4',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
+          );
+        }
 
-          // Risk level + stat cards
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+        final data = snapshot.data!;
+        final bool isHighRisk = data['riskLevel'] == 'High';
+
+        return GlassCard(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left: risk level
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+              // Tag row
+              Row(
+                children: [
+                  Icon(Icons.water_drop_outlined, color: AppColors.teal, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ML FORECAST',
+                    style: TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 2.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  // LIVE badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isHighRisk ? Colors.red.withValues(alpha: 0.2) : AppColors.tealLight,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'LIVE',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: isHighRisk ? Colors.redAccent : AppColors.teal,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Flood Risk Forecast',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.location_on_outlined, color: AppColors.textMuted, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    data['zone'] as String,
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Risk level + stat cards
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Left: risk level
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Low',
-                          style: TextStyle(
-                            fontSize: 44,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -2,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              data['riskLevel'] as String,
+                              style: TextStyle(
+                                fontSize: 40,
+                                fontWeight: FontWeight.w900,
+                                color: isHighRisk ? Colors.redAccent : AppColors.textPrimary,
+                                letterSpacing: -2,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              data['trend'] == 'rising' ? Icons.trending_up : Icons.trending_down,
+                              color: isHighRisk ? Colors.redAccent : AppColors.teal,
+                              size: 22,
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.trending_down, color: AppColors.teal, size: 22),
+                        const SizedBox(height: 10),
+                        // Risk progress bar (simulated high risk = 4 segments)
+                        _RiskBar(filledSegments: isHighRisk ? 4 : 1),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Next 24h rainfall: ${data['predictedRainfall']}',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    // Risk progress bar
-                    _RiskBar(filledSegments: 1),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Next 24h rainfall: 2.1mm expected',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Right: stat cards
-              Column(
-                children: [
-                  _StatMini(value: '87%', label: 'Drain Cap.'),
-                  const SizedBox(height: 8),
-                  _StatMini(value: '12', label: 'Sensors', accentValue: true),
+                  ),
+                  const SizedBox(width: 12),
+                  // Right: stat cards
+                  Column(
+                    children: [
+                      _StatMini(value: data['confidence'] as String, label: 'ML Conf.'),
+                      const SizedBox(height: 8),
+                      _StatMini(value: '12', label: 'Sensors', accentValue: true),
+                    ],
+                  ),
                 ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      }
     );
   }
 }
@@ -361,25 +519,60 @@ class _StatMini extends StatelessWidget {
 // ─────────────────────────────────────────────────────
 //  Report Button
 // ─────────────────────────────────────────────────────
-class _ReportButton extends StatelessWidget {
+class _ReportButton extends StatefulWidget {
   final VoidCallback onTap;
   const _ReportButton({required this.onTap});
 
   @override
+  State<_ReportButton> createState() => _ReportButtonState();
+}
+
+class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    
+    _animation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Stack(
         alignment: Alignment.center,
         children: [
           // Outer halo
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.tealLight.withValues(alpha: 0.6),
-            ),
+          AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _animation.value,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.tealLight.withValues(alpha: 0.6),
+                  ),
+                ),
+              );
+            },
           ),
           // Inner button
           Container(
@@ -476,6 +669,134 @@ class _RecentReportItem extends StatelessWidget {
             ),
           ),
           Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.textMuted),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  AI Analysis Result Sheet
+// ─────────────────────────────────────────────────────
+class _AnalysisResultSheet extends StatelessWidget {
+  final Map<String, dynamic> result;
+  final String imagePath;
+
+  const _AnalysisResultSheet({
+    required this.result,
+    required this.imagePath,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final severity = result['severity'] ?? 'Unknown';
+    final material = result['material'] ?? 'Unknown';
+    
+    Color severityColor = AppColors.teal;
+    if (severity == 'High' || severity == 'Error') severityColor = Colors.redAccent;
+    if (severity == 'Medium') severityColor = Colors.orange;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.scaffoldBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textMuted.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: AppColors.teal, size: 28),
+              const SizedBox(width: 12),
+              Text(
+                'AI Analysis Complete',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          GlassCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Blockage Severity', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text(
+                        severity,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: severityColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(width: 1, height: 40, color: AppColors.textMuted.withValues(alpha: 0.2)),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Detected Material', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      const SizedBox(height: 4),
+                      Text(
+                        material,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Analyzed image: $imagePath',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.teal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: const Text('SUBMIT REPORT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
