@@ -29,18 +29,21 @@ class DatabaseService {
       // Dummy location since native geolocation is not fully implemented yet
       reportData['location'] = const GeoPoint(3.1390, 101.6869); // Default KL
 
-      await _firestore.collection('reports').add(reportData);
+      debugPrint('FIREBASE: Attempting to add report data: $reportData');
+      final docRef = await _firestore.collection('reports').add(reportData);
+      debugPrint('FIREBASE: Successfully added report with ID: ${docRef.id}');
     } catch (e) {
-      debugPrint('Database Error: $e');
+      debugPrint('FIREBASE ERROR: Database Error during submit: $e');
       rethrow;
     }
   }
 
-  /// Streams active reports (Pending or In Progress), ordered by timestamp
   Stream<QuerySnapshot> getActiveReports() {
     return _firestore
         .collection('reports')
-        .where('status', whereIn: ['Pending', 'In Progress'])
+        // Dropped the `.where('status', ...)` clause because compound queries
+        // require a pre-built Firestore Composite Index which might be missing.
+        // Once the index is built in the Firebase Console, this can be re-added.
         .orderBy('timestamp', descending: true)
         .snapshots();
   }

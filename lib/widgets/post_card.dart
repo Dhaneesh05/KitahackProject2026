@@ -28,8 +28,8 @@ class _PostCardState extends State<PostCard> {
       case 'danger': return Colors.red.shade500;
       case 'medium': return Colors.orange;
       case 'low': return Colors.blue.shade400;
-      case 'clear': return AppColors.teal;
-      default: return AppColors.textMuted;
+      case 'clear': return AppColors.of(context).teal;
+      default: return AppColors.of(context).textMuted;
     }
   }
 
@@ -118,8 +118,8 @@ class _PostCardState extends State<PostCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
+        color: AppColors.of(context).scaffoldBg,
+        border: Border(bottom: BorderSide(color: AppColors.of(context).divider, width: 1)),
       ),
       child: Column(
         children: [
@@ -129,10 +129,10 @@ class _PostCardState extends State<PostCard> {
               padding: const EdgeInsets.only(left: 52, top: 10),
               child: Row(
                 children: [
-                  Icon(Icons.repeat_rounded, size: 14, color: Colors.grey.shade600),
+                  Icon(Icons.repeat_rounded, size: 14, color: AppColors.of(context).textMuted),
                   const SizedBox(width: 6),
                   Text('${widget.post.repostedBy} reposted',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontSize: 13, color: AppColors.of(context).textMuted, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -145,7 +145,7 @@ class _PostCardState extends State<PostCard> {
                 CircleAvatar(
                   radius: 22,
                   backgroundColor: _avatarBgColor(),
-                  child: Text(_initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                  child: Text(_initials, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -161,7 +161,7 @@ class _PostCardState extends State<PostCard> {
                                 Flexible(
                                   child: Text(widget.post.authorName,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF0F1419))),
+                                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.of(context).textPrimary)),
                                 ),
                                 if (widget.post.fullyVerified) ...[
                                   const SizedBox(width: 4),
@@ -171,17 +171,17 @@ class _PostCardState extends State<PostCard> {
                                 Flexible(
                                   child: Text('${widget.post.authorHandle} · ${widget.post.timestamp}',
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                                    style: TextStyle(fontSize: 13, color: AppColors.of(context).textMuted)),
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.more_horiz, color: Colors.grey.shade500, size: 20),
+                          Icon(Icons.more_horiz, color: AppColors.of(context).textMuted, size: 20),
                         ],
                       ),
                       const SizedBox(height: 6),
                       // Content
-                      Text(widget.post.content, style: const TextStyle(fontSize: 15, color: Color(0xFF0F1419), height: 1.4)),
+                      Text(widget.post.content, style: TextStyle(fontSize: 15, color: AppColors.of(context).textPrimary, height: 1.4)),
                       const SizedBox(height: 10),
                       // Image + severity badge
                       ClipRRect(
@@ -194,12 +194,12 @@ class _PostCardState extends State<PostCard> {
                               width: double.infinity,
                               height: 200,
                               errorBuilder: (_, __, ___) => Container(
-                                height: 200, color: Colors.grey.shade200,
-                                child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)),
+                                height: 200, color: AppColors.of(context).divider,
+                                child: Icon(Icons.broken_image_outlined, color: AppColors.of(context).textMuted, size: 48)),
                               loadingBuilder: (_, child, progress) {
                                 if (progress == null) return child;
-                                return Container(height: 200, color: Colors.grey.shade100,
-                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teal)));
+                                return Container(height: 200, color: AppColors.of(context).divider,
+                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.of(context).teal)));
                               },
                             ),
                             Positioned(
@@ -214,10 +214,10 @@ class _PostCardState extends State<PostCard> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(_severityIcon, color: Colors.white, size: 13),
+                                    Icon(_severityIcon, color: AppColors.of(context).scaffoldBg, size: 13),
                                     const SizedBox(width: 4),
                                     Text(widget.post.floodSeverity.toUpperCase(),
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8)),
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8)),
                                   ],
                                 ),
                               ),
@@ -270,18 +270,18 @@ class _VerificationBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: AppColors.of(context).glassBg,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: AppColors.of(context).divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.shield_outlined, size: 13, color: Colors.grey.shade600),
+              Icon(Icons.shield_outlined, size: 13, color: AppColors.of(context).textMuted),
               const SizedBox(width: 4),
-              Text('Verification', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade700)),
+              Text('Verification', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.of(context).textSecondary)),
               const Spacer(),
               if (post.fullyVerified)
                 Container(
@@ -332,7 +332,7 @@ class _VerifChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: done ? color.withValues(alpha: 0.12) : (onTap != null ? color.withValues(alpha: 0.06) : Colors.grey.shade100),
+          color: done ? color.withValues(alpha: 0.12) : (onTap != null ? color.withValues(alpha: 0.06) : AppColors.of(context).divider),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: done ? color.withValues(alpha: 0.5) : (onTap != null ? color.withValues(alpha: 0.4) : Colors.grey.shade300), width: 1),
         ),
@@ -342,9 +342,9 @@ class _VerifChip extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(done ? Icons.check_circle_rounded : icon, size: 12, color: done ? color : (onTap != null ? color : Colors.grey.shade500)),
+                Icon(done ? Icons.check_circle_rounded : icon, size: 12, color: done ? color : (onTap != null ? color : AppColors.of(context).textMuted)),
                 const SizedBox(width: 4),
-                Text(label, style: TextStyle(fontSize: 11, color: done ? color : (onTap != null ? color : Colors.grey.shade600), fontWeight: done ? FontWeight.w700 : FontWeight.w500)),
+                Text(label, style: TextStyle(fontSize: 11, color: done ? color : (onTap != null ? color : AppColors.of(context).textMuted), fontWeight: done ? FontWeight.w700 : FontWeight.w500)),
               ],
             ),
             if (subLabel != null) ...[
@@ -381,10 +381,10 @@ class _ActionBtn extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: isActive ? activeColor : Colors.grey.shade500),
+            Icon(icon, size: 18, color: isActive ? activeColor : AppColors.of(context).textMuted),
             if (count >= 0) ...[
               const SizedBox(width: 4),
-              Text(_fmt(count), style: TextStyle(fontSize: 13, color: isActive ? activeColor : Colors.grey.shade600, fontWeight: isActive ? FontWeight.w700 : FontWeight.w400)),
+              Text(_fmt(count), style: TextStyle(fontSize: 13, color: isActive ? activeColor : AppColors.of(context).textMuted, fontWeight: isActive ? FontWeight.w700 : FontWeight.w400)),
             ],
           ],
         ),

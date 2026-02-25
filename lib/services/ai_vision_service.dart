@@ -60,4 +60,29 @@ class AiVisionService {
       };
     }
   }
+
+  /// Generates a concise safety summary explaining why a specific material blockage is dangerous.
+  Future<String> generateReportSummary(String material) async {
+    try {
+      final apiKey = dotenv.env['GEMINI_API_KEY'];
+      if (apiKey == null || apiKey.isEmpty || apiKey == 'your_gemini_api_key_here') {
+        throw Exception('GEMINI_API_KEY is missing or invalid in .env file.');
+      }
+
+      final model = GenerativeModel(
+        model: 'gemini-2.5-flash',
+        apiKey: apiKey,
+      );
+
+      final prompt = '''You are a civil engineering AI assistant. In exactly 2 sentences, explain why a drainage blockage caused by '$material' is dangerous for flash floods. Be direct and concise with no markdown.''';
+
+      final response = await model.generateContent([
+        Content.text(prompt)
+      ]);
+
+      return response.text?.trim() ?? 'Summary generation failed.';
+    } catch (e) {
+      return 'Summary unavailable at this time due to a network or API error. Please try again later.';
+    }
+  }
 }
