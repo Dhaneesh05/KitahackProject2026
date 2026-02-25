@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../screens/home_screen.dart';
-import '../screens/admin_dashboard_screen.dart';
+import '../screens/admin_main_screen.dart';
 import '../screens/login_screen.dart';
 
 class AuthService {
@@ -51,7 +51,7 @@ class AuthService {
     if (user.email == 'admin@cityhall.gov') {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        MaterialPageRoute(builder: (context) => const AdminMainScreen()),
       );
     } else {
       Navigator.pushReplacement(

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:csv/csv.dart';
 import '../models/post.dart';
 import '../models/post_store.dart';
 import '../widgets/post_card.dart';
@@ -33,13 +31,8 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
 
   Future<void> _loadPosts() async {
     try {
-      final rawCsv = await rootBundle.loadString('assets/data/posts.csv');
-      final rows = const CsvToListConverter(eol: '\n').convert(rawCsv);
-      final posts = rows.skip(1).where((r) => r.length >= 10).map((r) => Post.fromCsvRow(r)).toList();
-      setState(() {
-        _store.posts = posts;
-        _isLoading = false;
-      });
+      await _store.loadPostsFromLocal();
+      setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
     }
@@ -50,7 +43,8 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
     await _loadPosts();
   }
 
-  List<Post> get _alertPosts => _store.posts.where((p) => p.floodSeverity.toLowerCase() == 'danger').toList();
+  List<Post> get _validPosts => _store.posts.where((p) => !p.isDeleted).toList();
+  List<Post> get _alertPosts => _validPosts.where((p) => p.effectiveSeverity.toLowerCase() == 'danger').toList();
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +93,7 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
                   : TabBarView(
                       controller: _tabController,
                       children: [
-                        _PostList(posts: _store.posts, onRefresh: _refresh),
+                        _PostList(posts: _validPosts, onRefresh: _refresh),
                         _PostList(posts: _alertPosts, onRefresh: _refresh),
                       ],
                     ),

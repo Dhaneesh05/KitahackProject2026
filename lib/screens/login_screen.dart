@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'main_screen.dart';
-import 'admin_dashboard_screen.dart';
+import 'admin_main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        MaterialPageRoute(builder: (context) => const AdminMainScreen()),
       );
     }
   }

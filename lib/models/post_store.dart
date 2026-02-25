@@ -1,4 +1,10 @@
+import 'package:flutter/services.dart';
+import 'package:csv/csv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'post.dart';
+
+const _csvStorageKey = 'hydrovision_posts_csv';
+const _csvHeader = 'id,authorName,authorHandle,content,imageUrl,timestamp,likes,comments,reposts,floodSeverity,userVerifications,adminVerified,aiVerified,repostedBy,status,currentSeverity,isDeleted';
 
 /// A point transaction entry
 class PointTransaction {
@@ -102,5 +108,44 @@ class PostStore {
     if (lifetime >= 1000) return 2000;
     if (lifetime >= 300) return 1000;
     return 300;
+  }
+
+  // ─── CSV Persistence ──────────────────────────────────────────────────────
+
+  /// Loads posts from local storage (shared_preferences).
+  /// Falls back to the bundled CSV asset on first run.
+  Future<List<Post>> loadPostsFromLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedCsv = prefs.getString(_csvStorageKey);
+
+    String csvData;
+    if (savedCsv != null && savedCsv.isNotEmpty) {
+      // Use locally persisted data
+      csvData = savedCsv;
+    } else {
+      // First run — load from bundled asset
+      csvData = await rootBundle.loadString('assets/data/posts.csv');
+    }
+
+    final rows = const CsvToListConverter(eol: '\n').convert(csvData);
+    final loaded = rows.skip(1).where((r) => r.length >= 10).map((r) => Post.fromCsvRow(r)).toList();
+    posts = loaded;
+    return loaded;
+  }
+
+  /// Persists the current in-memory post list to local storage as CSV.
+  Future<void> savePostsToCsv() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Filter out reposts (they are runtime-generated, not persisted)
+    final persistable = posts.where((p) => p.repostedBy == null).toList();
+
+    final rows = <List<dynamic>>[
+      _csvHeader.split(','),
+      ...persistable.map((p) => p.toCsvRow()),
+    ];
+
+    final csvString = const ListToCsvConverter().convert(rows);
+    await prefs.setString(_csvStorageKey, csvString);
   }
 }
