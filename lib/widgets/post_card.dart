@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../models/post_store.dart';
+import '../models/admin_store.dart';
 import '../theme/app_theme.dart';
 
 class PostCard extends StatefulWidget {
@@ -24,7 +25,7 @@ class _PostCardState extends State<PostCard> {
   }
 
   Color get _severityColor {
-    switch (widget.post.floodSeverity.toLowerCase()) {
+    switch (widget.post.effectiveSeverity.toLowerCase()) {
       case 'danger': return Colors.red.shade500;
       case 'medium': return Colors.orange;
       case 'low': return Colors.blue.shade400;
@@ -34,12 +35,36 @@ class _PostCardState extends State<PostCard> {
   }
 
   IconData get _severityIcon {
-    switch (widget.post.floodSeverity.toLowerCase()) {
+    switch (widget.post.effectiveSeverity.toLowerCase()) {
       case 'danger': return Icons.warning_amber_rounded;
       case 'medium': return Icons.water_rounded;
       case 'low': return Icons.water_drop_outlined;
       case 'clear': return Icons.check_circle_outline_rounded;
       default: return Icons.help_outline_rounded;
+    }
+  }
+
+  Color _statusColor(PostStatus status) {
+    switch (status) {
+      case PostStatus.pending: return Colors.grey;
+      case PostStatus.verified: return Colors.blue;
+      case PostStatus.dispatchSent: return Colors.orange;
+      case PostStatus.beingResolved: return Colors.amber.shade700;
+      case PostStatus.weatherHindrance: return Colors.deepPurple;
+      case PostStatus.resolved: return Colors.green;
+      case PostStatus.notFlooded: return Colors.grey.shade600;
+    }
+  }
+
+  IconData _statusIcon(PostStatus status) {
+    switch (status) {
+      case PostStatus.pending: return Icons.hourglass_empty_rounded;
+      case PostStatus.verified: return Icons.verified_rounded;
+      case PostStatus.dispatchSent: return Icons.local_shipping_rounded;
+      case PostStatus.beingResolved: return Icons.build_circle_rounded;
+      case PostStatus.weatherHindrance: return Icons.thunderstorm_rounded;
+      case PostStatus.resolved: return Icons.check_circle_rounded;
+      case PostStatus.notFlooded: return Icons.cancel_rounded;
     }
   }
 
@@ -68,6 +93,7 @@ class _PostCardState extends State<PostCard> {
         _store.likedPostIds.remove(widget.post.id);
       }
     });
+    _store.savePostsToCsv();
   }
 
   void _toggleRepost() {
@@ -86,6 +112,7 @@ class _PostCardState extends State<PostCard> {
         _store.reposts.removeWhere((r) => r.id == '${widget.post.id}_repost_${_store.currentUser}');
       }
     });
+    _store.savePostsToCsv();
   }
 
   /// Adds current user's verification to this post (with duplicate + self-post guards)
@@ -104,17 +131,19 @@ class _PostCardState extends State<PostCard> {
       _store.currentUser, 10, 'Verified a flood report',
       relatedPostId: widget.post.id,
     );
-    // Award points to the post author for their report being verified
     _store.addPoints(
       widget.post.authorName, 10, 'Your post was verified by ${_store.currentUser}',
       relatedPostId: widget.post.id,
     );
+    _store.savePostsToCsv();
   }
 
   @override
   Widget build(BuildContext context) {
     final alreadyVerified = widget.post.verifiedByUsers.contains(_store.currentHandle);
     final isOwnPost = widget.post.authorHandle == _store.currentHandle;
+    final isBanned = AdminStore().bannedHandles.contains(widget.post.authorHandle);
+    final post = widget.post;
 
     return Container(
       decoration: BoxDecoration(
@@ -123,6 +152,23 @@ class _PostCardState extends State<PostCard> {
       ),
       child: Column(
         children: [
+          // ── Status badge at top ──────────────────────────────────
+          if (post.status != PostStatus.pending)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: _statusColor(post.status).withValues(alpha: 0.08),
+              child: Row(
+                children: [
+                  Icon(_statusIcon(post.status), size: 16, color: _statusColor(post.status)),
+                  const SizedBox(width: 8),
+                  Text(post.status.label, style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700,
+                    color: _statusColor(post.status),
+                  )),
+                ],
+              ),
+            ),
           // Repost header
           if (widget.post.repostedBy != null)
             Padding(
@@ -142,10 +188,16 @@ class _PostCardState extends State<PostCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Avatar
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: _avatarBgColor(),
-                  child: Text(_initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: isBanned ? Colors.red.shade100 : _avatarBgColor(),
+                      child: isBanned
+                          ? Icon(Icons.person_off_rounded, color: Colors.red.shade400, size: 20)
+                          : Text(_initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+                    ),
+                  ],
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -161,9 +213,13 @@ class _PostCardState extends State<PostCard> {
                                 Flexible(
                                   child: Text(widget.post.authorName,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF0F1419))),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700, fontSize: 15,
+                                      color: isBanned ? Colors.red.shade300 : const Color(0xFF0F1419),
+                                      decoration: isBanned ? TextDecoration.lineThrough : null,
+                                    )),
                                 ),
-                                if (widget.post.fullyVerified) ...[
+                                if (widget.post.fullyVerified || widget.post.adminVerified) ...[
                                   const SizedBox(width: 4),
                                   Icon(Icons.verified_rounded, size: 16, color: Colors.blue.shade600),
                                 ],
@@ -216,7 +272,7 @@ class _PostCardState extends State<PostCard> {
                                   children: [
                                     Icon(_severityIcon, color: Colors.white, size: 13),
                                     const SizedBox(width: 4),
-                                    Text(widget.post.floodSeverity.toUpperCase(),
+                                    Text(widget.post.effectiveSeverity.toUpperCase(),
                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8)),
                                   ],
                                 ),
