@@ -55,13 +55,13 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [
             // Header
             Container(
-              decoration: BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
+              decoration: BoxDecoration(color: AppColors.of(context).scaffoldBg, border: Border(bottom: BorderSide(color: AppColors.of(context).divider))),
               child: Column(
                 children: [
                   Padding(
@@ -70,24 +70,24 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: AppColors.tealLight, shape: BoxShape.circle),
-                          child: Icon(Icons.water_drop_rounded, color: AppColors.teal, size: 20),
+                          decoration: BoxDecoration(color: AppColors.of(context).tealLight, shape: BoxShape.circle),
+                          child: Icon(Icons.water_drop_rounded, color: AppColors.of(context).teal, size: 20),
                         ),
                         const SizedBox(width: 12),
-                        Text('Flood Reports', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5)),
+                        Text('Flood Reports', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary, letterSpacing: -0.5)),
                         const Spacer(),
-                        Icon(Icons.tune_rounded, color: AppColors.textMuted, size: 22),
+                        Icon(Icons.tune_rounded, color: AppColors.of(context).textMuted, size: 22),
                       ],
                     ),
                   ),
                   TabBar(
                     controller: _tabController,
-                    indicatorColor: AppColors.teal,
+                    indicatorColor: AppColors.of(context).teal,
                     indicatorWeight: 2.5,
-                    labelColor: AppColors.textPrimary,
-                    unselectedLabelColor: AppColors.textMuted,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                    labelColor: AppColors.of(context).textPrimary,
+                    unselectedLabelColor: AppColors.of(context).textMuted,
+                    labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
                     tabs: const [Tab(text: 'For You'), Tab(text: 'Alerts 🚨')],
                   ),
                 ],
@@ -95,7 +95,7 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
             ),
             Expanded(
               child: _isLoading
-                  ? Center(child: CircularProgressIndicator(color: AppColors.teal, strokeWidth: 2))
+                  ? Center(child: CircularProgressIndicator(color: AppColors.of(context).teal, strokeWidth: 2))
                   : TabBarView(
                       controller: _tabController,
                       children: [
@@ -109,10 +109,10 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showPostDialog(context),
-        backgroundColor: AppColors.teal,
+        backgroundColor: AppColors.of(context).teal,
         elevation: 4,
         shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
+        child: Icon(Icons.add, color: AppColors.of(context).scaffoldBg, size: 28),
       ),
     );
   }
@@ -121,7 +121,7 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => _NewPostSheet(onPost: (post) {
         setState(() => _store.posts.insert(0, post));
@@ -142,15 +142,15 @@ class _PostList extends StatelessWidget {
     if (posts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.water_drop_outlined, size: 52, color: AppColors.textMuted),
+          Icon(Icons.water_drop_outlined, size: 52, color: AppColors.of(context).textMuted),
           const SizedBox(height: 12),
-          Text('No reports yet', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 16)),
+          Text('No reports yet', style: TextStyle(color: AppColors.of(context).textSecondary, fontWeight: FontWeight.w600, fontSize: 16)),
         ]),
       );
     }
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: AppColors.teal,
+      color: AppColors.of(context).teal,
       child: ListView.builder(itemCount: posts.length, itemBuilder: (_, i) => PostCard(post: posts[i])),
     );
   }
@@ -168,15 +168,16 @@ class _NewPostSheetState extends State<_NewPostSheet> {
   final _controller = TextEditingController();
   String _severity = 'Low';
 
-  final List<Map<String, dynamic>> _severities = [
-    {'label': 'Clear', 'color': AppColors.teal},
-    {'label': 'Low', 'color': Colors.blue},
-    {'label': 'Medium', 'color': Colors.orange},
-    {'label': 'Danger', 'color': Colors.red},
-  ];
+
 
   @override
   Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> _severities = [
+      {'label': 'Clear', 'color': AppColors.of(context).teal},
+      {'label': 'Low', 'color': Colors.blue},
+      {'label': 'Medium', 'color': Colors.orange},
+      {'label': 'Danger', 'color': Colors.red},
+    ];
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 16, left: 16, right: 16, top: 16),
       child: Column(
@@ -185,13 +186,13 @@ class _NewPostSheetState extends State<_NewPostSheet> {
         children: [
           Row(
             children: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: TextStyle(color: AppColors.of(context).textMuted))),
               const Spacer(),
               const Text('New Report', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
               const Spacer(),
               ElevatedButton(
                 onPressed: _submitPost,
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal, foregroundColor: Colors.white, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), elevation: 0),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.of(context).teal, foregroundColor: Colors.white, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), elevation: 0),
                 child: const Text('Post', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
@@ -202,13 +203,13 @@ class _NewPostSheetState extends State<_NewPostSheet> {
             autofocus: true,
             decoration: InputDecoration(
               hintText: "What's happening with floods near you?",
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+              hintStyle: TextStyle(color: AppColors.of(context).textMuted, fontSize: 16),
               border: InputBorder.none,
             ),
-            style: const TextStyle(fontSize: 16, color: Color(0xFF0F1419)),
+            style: TextStyle(fontSize: 16, color: AppColors.of(context).textPrimary),
           ),
           const SizedBox(height: 8),
-          const Text('Flood Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
+          Text('Flood Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.of(context).textMuted)),
           const SizedBox(height: 8),
           Row(
             children: _severities.map((s) {
@@ -221,7 +222,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
                     duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: isSelected ? (s['color'] as Color).withValues(alpha: 0.12) : Colors.grey.shade100,
+                      color: isSelected ? (s['color'] as Color).withValues(alpha: 0.12) : AppColors.of(context).divider,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: isSelected ? (s['color'] as Color) : Colors.transparent, width: 1.5),
                     ),
@@ -232,7 +233,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
             }).toList(),
           ),
           const SizedBox(height: 16),
-          Row(children: [Icon(Icons.image_outlined, color: AppColors.teal), const SizedBox(width: 16), Icon(Icons.location_on_outlined, color: AppColors.teal)]),
+          Row(children: [Icon(Icons.image_outlined, color: AppColors.of(context).teal), const SizedBox(width: 16), Icon(Icons.location_on_outlined, color: AppColors.of(context).teal)]),
           const SizedBox(height: 8),
         ],
       ),

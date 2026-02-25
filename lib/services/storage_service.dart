@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -30,17 +31,31 @@ class StorageService {
           contentType: 'image/$safeExt',
         );
         final UploadTask uploadTask = ref.putData(bytes, metadata);
-        final TaskSnapshot snapshot = await uploadTask;
+        // Add a 10s timeout to prevent infinite hangs on Web if CORS is misconfigured
+        final TaskSnapshot snapshot = await uploadTask.timeout(const Duration(seconds: 10));
         return await snapshot.ref.getDownloadURL();
       } else {
         // Mobile can upload File directly
         final File file = File(imageFile.path);
         final UploadTask uploadTask = ref.putFile(file);
-        final TaskSnapshot snapshot = await uploadTask;
+        final TaskSnapshot snapshot = await uploadTask.timeout(const Duration(seconds: 15));
         return await snapshot.ref.getDownloadURL();
       }
     } catch (e) {
       debugPrint('Storage Error: $e');
+      if (kIsWeb) {
+        // If it hangs or fails on Web (typically due to strict Storage CORS),
+        // fallback to base64 encoding the image directly into Firestore.
+        // The image is already compressed via ImagePicker.
+        try {
+          final Uint8List fallbackBytes = await imageFile.readAsBytes();
+          final String base64String = base64Encode(fallbackBytes);
+          return 'data:image/jpeg;base64,$base64String';
+        } catch (innerErr) {
+          debugPrint('Base64 Fallback Error: $innerErr');
+          return '';
+        }
+      }
       rethrow;
     }
   }

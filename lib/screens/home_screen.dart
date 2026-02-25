@@ -4,10 +4,12 @@ import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../services/ai_vision_service.dart';
-import '../services/flood_prediction_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
+import '../widgets/report_details_dialog.dart';
+import '../main.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -17,14 +19,18 @@ class HomeScreen extends StatelessWidget {
     final ImagePicker picker = ImagePicker();
     
     try {
-      final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 800,
+        imageQuality: 50,
+      );
       
       if (photo != null && context.mounted) {
         // Show loading indicator
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator(color: AppColors.teal)),
+          builder: (context) => Center(child: CircularProgressIndicator(color: AppColors.of(context).teal)),
         );
 
         // Analyze image with Gemini
@@ -59,7 +65,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       drawer: _SettingsDrawer(),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -70,7 +76,30 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               // ── App Header ──────────────────────────────────────────
               _AppHeader(),
-              const SizedBox(height: 28),
+              
+              // ── Predictive Alert Banner ──────────────────────────────
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance.collection('system_alerts').doc('current_forecast').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                     return const SizedBox(height: 28); // Placeholder space
+                  }
+                  if (!snapshot.hasData || !snapshot.data!.exists) {
+                    return const SizedBox(height: 28);
+                  }
+                  
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final bool isCritical = data['is_critical'] ?? false;
+                  final String date = data['date'] ?? '';
+
+                  if (!isCritical) return const SizedBox(height: 28);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 20, bottom: 8),
+                    child: _ResidentUrgentAlertCard(date: date),
+                  );
+                },
+              ),
 
               // ── Ecosystem / Flood Risk Card ─────────────────────────
               _FloodRiskCard(),
@@ -84,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                     fontSize: 12,
                     letterSpacing: 2.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: AppColors.of(context).textSecondary,
                   ),
                 ),
               ),
@@ -97,7 +126,7 @@ class HomeScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: AppColors.of(context).textPrimary,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -108,7 +137,7 @@ class HomeScreen extends StatelessWidget {
                   'Tap to report a blocked or flooded drain nearby',
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: AppColors.of(context).textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -122,30 +151,104 @@ class HomeScreen extends StatelessWidget {
                   fontSize: 11,
                   letterSpacing: 2.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: AppColors.of(context).textSecondary,
                 ),
               ),
               const SizedBox(height: 12),
-              _RecentReportItem(
-                icon: Icons.water_drop_outlined,
-                title: 'Drain #4023 Cleared',
-                subtitle: 'Jalan Ampang • 10 mins ago',
-                color: AppColors.teal,
+              
+              StreamBuilder<QuerySnapshot>(
+                stream: DatabaseService().getActiveReports(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: CircularProgressIndicator(color: AppColors.of(context).teal),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(
+                        child: Text(
+                          'No recent reports.',
+                          style: TextStyle(color: AppColors.of(context).textSecondary, fontSize: 13),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final docs = snapshot.data!.docs.take(3).toList();
+
+                  return Column(
+                    children: docs.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      
+                      final String material = data['debrisType'] ?? 'Unknown';
+                      
+                      // Calculate time ago
+                      String timeAgo = 'Just now';
+                      final timestamp = data['timestamp'];
+                      if (timestamp is Timestamp) {
+                        final diff = DateTime.now().difference(timestamp.toDate());
+                        if (diff.inDays > 0) {
+                          timeAgo = '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
+                        } else if (diff.inHours > 0) {
+                          timeAgo = '${diff.inHours} hr${diff.inHours == 1 ? '' : 's'} ago';
+                        } else if (diff.inMinutes > 0) {
+                          timeAgo = '${diff.inMinutes} min${diff.inMinutes == 1 ? '' : 's'} ago';
+                        }
+                      }
+
+                      // Severity mapping
+                      final dynamic rawScore = data['severityScore'];
+                      int score = 0;
+                      if (rawScore is int) score = rawScore;
+                      else if (rawScore is String) {
+                        if (rawScore.toLowerCase() == 'high') score = 85;
+                        else if (rawScore.toLowerCase() == 'medium') score = 65;
+                        else if (rawScore.toLowerCase() == 'low') score = 30;
+                        else score = int.tryParse(rawScore) ?? 0;
+                      } 
+                      else if (rawScore is double) score = rawScore.toInt();
+
+                      Color color = Colors.green;
+                      if (score >= 80) color = Colors.redAccent;
+                      else if (score >= 60) color = Colors.orange;
+
+                      // Icon mapping
+                      IconData icon = Icons.water_drop_outlined;
+                      final String lowerMat = material.toLowerCase();
+                      if (lowerMat.contains('plastic') || lowerMat.contains('trash') || lowerMat.contains('garbage')) {
+                        icon = Icons.delete_outline;
+                      } else if (lowerMat.contains('veg') || lowerMat.contains('leaf') || lowerMat.contains('leaves') || lowerMat.contains('branch')) {
+                        icon = Icons.eco_outlined;
+                      } else if (lowerMat.contains('mud') || lowerMat.contains('silt') || lowerMat.contains('soil') || lowerMat.contains('sand')) {
+                        icon = Icons.terrain_outlined;
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: _RecentReportItem(
+                          icon: icon,
+                          title: 'Report: $material',
+                          subtitle: timeAgo,
+                          color: color,
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => ReportDetailsDialog(reportData: data),
+                            );
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
               ),
-              const SizedBox(height: 8),
-              _RecentReportItem(
-                icon: Icons.warning_amber_rounded,
-                title: 'Flash Flood Alert Resolved',
-                subtitle: 'Bangsar • 2 hours ago',
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 8),
-              _RecentReportItem(
-                icon: Icons.emoji_events_outlined,
-                title: 'Badge Earned: Water Guardian',
-                subtitle: 'Yesterday',
-                color: Colors.amber,
-              ),
+              
               const SizedBox(height: 24),
             ],
           ),
@@ -162,74 +265,181 @@ class _SettingsDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: AppColors.scaffoldBg,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      width: 320,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.of(context).glassBg.withValues(alpha: 0.8),
+              border: Border(right: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5), width: 1.5)),
+            ),
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 32, 24, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Settings',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.of(context).textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        GlassCard(
+                          padding: EdgeInsets.all(8),
+                          borderRadius: 12,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.6),
+                          onTap: () => Navigator.pop(context),
+                          child: Icon(Icons.close_rounded, color: AppColors.of(context).textSecondary, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _DrawerItem(
+                    icon: Icons.lock_outline,
+                    title: 'Privacy',
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.accessibility_new_outlined,
+                    title: 'Accessibility',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAccessibilitySheet(context);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.description_outlined,
+                    title: 'Terms & Conditions',
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const Spacer(),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Divider(height: 1, thickness: 1, color: Colors.black12),
+                  ),
+                  const SizedBox(height: 16),
+                  _DrawerItem(
+                    icon: Icons.logout_rounded,
+                    title: 'Logout',
+                    isDestructive: true,
+                    onTap: () {
+                      Navigator.of(context, rootNavigator: true).pushReplacement(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      );
+                    },
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(28, 16, 24, 24),
+                    child: Text(
+                      'HydroVision v1.0.0',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.of(context).textMuted,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            _DrawerItem(
-              icon: Icons.lock_outline,
-              title: 'Privacy',
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to Privacy
-              },
-            ),
-            _DrawerItem(
-              icon: Icons.accessibility_new_outlined,
-              title: 'Accessibility',
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to Accessibility
-              },
-            ),
-            _DrawerItem(
-              icon: Icons.description_outlined,
-              title: 'Terms & Conditions',
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to Terms
-              },
-            ),
-            const Spacer(),
-            const Divider(height: 1, thickness: 1, indent: 24, endIndent: 24),
-            const SizedBox(height: 8),
-            _DrawerItem(
-              icon: Icons.logout_rounded,
-              title: 'Logout',
-              onTap: () {
-                Navigator.of(context, rootNavigator: true).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Text(
-                'HydroVision v1.0.0',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showAccessibilitySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.of(context).scaffoldBg.withValues(alpha: 0.8),
+                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.2))),
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Accessibility',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.of(context).textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ValueListenableBuilder<ThemeMode>(
+                      valueListenable: appThemeNotifier,
+                      builder: (context, currentMode, child) {
+                        final isDark = currentMode == ThemeMode.dark;
+                        return GlassCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.55),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                                    color: AppColors.of(context).teal,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    isDark ? 'Light Mode' : 'Dark Mode',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.of(context).textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: isDark,
+                                activeColor: AppColors.of(context).teal,
+                                onChanged: (val) {
+                                  appThemeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -238,28 +448,55 @@ class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final bool isDestructive;
 
   const _DrawerItem({
     required this.icon,
     required this.title,
     required this.onTap,
+    this.isDestructive = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      leading: Icon(icon, color: AppColors.teal, size: 24),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        borderRadius: 16,
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.55),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDestructive 
+                    ? Colors.redAccent.withValues(alpha: 0.15)
+                    : AppColors.of(context).tealDeep.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon, 
+                color: isDestructive ? Colors.redAccent : AppColors.of(context).tealDeep, 
+                size: 20
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.of(context).textPrimary,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.of(context).textMuted, size: 20),
+          ],
         ),
       ),
-      trailing: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-      onTap: onTap,
     );
   }
 }
@@ -277,10 +514,10 @@ class _AppHeader extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.tealLight,
+            color: AppColors.of(context).tealLight,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(Icons.water_drop, color: AppColors.teal, size: 22),
+          child: Icon(Icons.water_drop, color: AppColors.of(context).teal, size: 22),
         ),
         const SizedBox(width: 12),
         Column(
@@ -291,7 +528,7 @@ class _AppHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: AppColors.of(context).textPrimary,
                 letterSpacing: -0.5,
               ),
             ),
@@ -300,7 +537,7 @@ class _AppHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: AppColors.of(context).textSecondary,
                 letterSpacing: 1.8,
               ),
             ),
@@ -313,7 +550,7 @@ class _AppHeader extends StatelessWidget {
           onTap: () {
             Scaffold.of(context).openDrawer();
           },
-          child: Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
+          child: Icon(Icons.settings_outlined, color: AppColors.of(context).textSecondary, size: 20),
         ),
       ],
     );
@@ -326,20 +563,51 @@ class _AppHeader extends StatelessWidget {
 class _FloodRiskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: FloodPredictionService().getTodayFloodRisk(),
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('system_alerts').doc('current_forecast').snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return GlassCard(
-            padding: const EdgeInsets.all(40),
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.teal),
+            padding: const EdgeInsets.all(22),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.4, end: 0.8),
+              duration: const Duration(milliseconds: 1000),
+              curve: Curves.easeInOut,
+              builder: (context, opacity, child) {
+                return Opacity(
+                  opacity: opacity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(height: 16, width: 120, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4))),
+                      const SizedBox(height: 24),
+                      Container(height: 28, width: 180, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4))),
+                      const SizedBox(height: 24),
+                      Container(height: 50, width: 120, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8))),
+                      const SizedBox(height: 16),
+                      Container(height: 4, width: double.infinity, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4))),
+                    ],
+                  ),
+                );
+              },
             ),
           );
         }
 
-        final data = snapshot.data!;
-        final bool isHighRisk = data['riskLevel'] == 'High';
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.data()!;
+        final bool isHighRisk = data['is_critical'] == true;
+        
+        final String riskText = data['risk_level']?.toString() ?? 'Pending';
+        final String confidenceText = data['confidence']?.toString() ?? '--%';
+        final String rainfallText = data['expected_rain']?.toString() ?? '--mm';
+        
+        final Color activeColor = isHighRisk ? Colors.redAccent : Colors.green.shade500;
+        final Color activeBgColor = isHighRisk ? Colors.red.withValues(alpha: 0.2) : Colors.green.withValues(alpha: 0.15);
+        final IconData activeIcon = isHighRisk ? Icons.trending_up : Icons.trending_down;
 
         return GlassCard(
           padding: const EdgeInsets.all(22),
@@ -349,7 +617,7 @@ class _FloodRiskCard extends StatelessWidget {
               // Tag row
               Row(
                 children: [
-                  Icon(Icons.water_drop_outlined, color: AppColors.teal, size: 18),
+                  Icon(Icons.water_drop_outlined, color: AppColors.of(context).teal, size: 18),
                   const SizedBox(width: 8),
                   Text(
                     'ML FORECAST',
@@ -357,7 +625,7 @@ class _FloodRiskCard extends StatelessWidget {
                       fontSize: 11,
                       letterSpacing: 2.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: AppColors.of(context).textSecondary,
                     ),
                   ),
                   const Spacer(),
@@ -365,7 +633,7 @@ class _FloodRiskCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isHighRisk ? Colors.red.withValues(alpha: 0.2) : AppColors.tealLight,
+                      color: activeBgColor,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -374,7 +642,7 @@ class _FloodRiskCard extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
-                        color: isHighRisk ? Colors.redAccent : AppColors.teal,
+                        color: activeColor,
                       ),
                     ),
                   ),
@@ -386,18 +654,18 @@ class _FloodRiskCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: AppColors.of(context).textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.location_on_outlined, color: AppColors.textMuted, size: 14),
+                  Icon(Icons.location_on_outlined, color: AppColors.of(context).textMuted, size: 14),
                   const SizedBox(width: 4),
                   Text(
-                    data['zone'] as String,
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    'Downtown District, Zone 4',
+                    style: TextStyle(fontSize: 13, color: AppColors.of(context).textSecondary),
                   ),
                 ],
               ),
@@ -416,29 +684,29 @@ class _FloodRiskCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              data['riskLevel'] as String,
+                              riskText,
                               style: TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.w900,
-                                color: isHighRisk ? Colors.redAccent : AppColors.textPrimary,
+                                color: activeColor,
                                 letterSpacing: -2,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Icon(
-                              data['trend'] == 'rising' ? Icons.trending_up : Icons.trending_down,
-                              color: isHighRisk ? Colors.redAccent : AppColors.teal,
+                              activeIcon,
+                              color: activeColor,
                               size: 22,
                             ),
                           ],
                         ),
                         const SizedBox(height: 10),
-                        // Risk progress bar (simulated high risk = 4 segments)
-                        _RiskBar(filledSegments: isHighRisk ? 4 : 1),
+                        // Risk progress bar 
+                        _RiskBar(filledSegments: isHighRisk ? 4 : 1, activeColor: activeColor),
                         const SizedBox(height: 8),
                         Text(
-                          'Next 24h rainfall: ${data['predictedRainfall']}',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          'Next 24h rainfall: $rainfallText',
+                          style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary),
                         ),
                       ],
                     ),
@@ -447,7 +715,7 @@ class _FloodRiskCard extends StatelessWidget {
                   // Right: stat cards
                   Column(
                     children: [
-                      _StatMini(value: data['confidence'] as String, label: 'ML Conf.'),
+                      _StatMini(value: confidenceText, label: 'ML Conf.'),
                       const SizedBox(height: 8),
                       _StatMini(value: '12', label: 'Sensors', accentValue: true),
                     ],
@@ -464,7 +732,8 @@ class _FloodRiskCard extends StatelessWidget {
 
 class _RiskBar extends StatelessWidget {
   final int filledSegments;
-  const _RiskBar({this.filledSegments = 1});
+  final Color activeColor;
+  const _RiskBar({this.filledSegments = 1, required this.activeColor});
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +744,7 @@ class _RiskBar extends StatelessWidget {
             margin: const EdgeInsets.only(right: 4),
             height: 4,
             decoration: BoxDecoration(
-              color: i < filledSegments ? AppColors.teal : AppColors.textMuted.withValues(alpha: 0.3),
+              color: i < filledSegments ? activeColor : AppColors.of(context).textMuted.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -512,14 +781,14 @@ class _StatMini extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: accentValue ? AppColors.teal : AppColors.textPrimary,
+                  color: accentValue ? AppColors.of(context).teal : AppColors.of(context).textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 label,
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: AppColors.of(context).textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -582,7 +851,7 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.tealLight.withValues(alpha: 0.6),
+                    color: AppColors.of(context).tealLight.withValues(alpha: 0.6),
                   ),
                 ),
               );
@@ -595,12 +864,12 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [AppColors.teal, AppColors.tealDeep],
+                colors: [AppColors.of(context).teal, AppColors.of(context).tealDeep],
                 center: const Alignment(-0.3, -0.3),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.teal.withValues(alpha: 0.45),
+                  color: AppColors.of(context).teal.withValues(alpha: 0.45),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -609,7 +878,7 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.camera_alt_outlined, color: AppColors.textOnTeal, size: 28),
+                Icon(Icons.camera_alt_outlined, color: AppColors.of(context).textOnTeal, size: 28),
                 const SizedBox(height: 4),
                 Text(
                   'REPORT',
@@ -617,7 +886,7 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.5,
-                    color: AppColors.textOnTeal,
+                    color: AppColors.of(context).textOnTeal,
                   ),
                 ),
               ],
@@ -637,12 +906,14 @@ class _RecentReportItem extends StatelessWidget {
   final String title;
   final String subtitle;
   final Color color;
+  final VoidCallback onTap;
 
   const _RecentReportItem({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.color,
+    required this.onTap,
   });
 
   @override
@@ -650,6 +921,7 @@ class _RecentReportItem extends StatelessWidget {
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       borderRadius: 16,
+      onTap: onTap,
       child: Row(
         children: [
           Container(
@@ -671,18 +943,18 @@ class _RecentReportItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: AppColors.of(context).textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary),
                 ),
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.textMuted),
+          Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.of(context).textMuted),
         ],
       ),
     );
@@ -725,7 +997,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       if (context.mounted) {
         Navigator.pop(context); // Close sheet
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Report submitted successfully to Firebase!'), backgroundColor: AppColors.teal),
+          SnackBar(content: Text('Report submitted successfully to Firebase!'), backgroundColor: AppColors.of(context).teal),
         );
       }
     } catch (e) {
@@ -744,14 +1016,14 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
     final severity = widget.result['severity'] ?? 'Unknown';
     final material = widget.result['material'] ?? 'Unknown';
     
-    Color severityColor = AppColors.teal;
+    Color severityColor = AppColors.of(context).teal;
     if (severity == 'High' || severity == 'Error') severityColor = Colors.redAccent;
     if (severity == 'Medium') severityColor = Colors.orange;
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.scaffoldBg,
+        color: AppColors.of(context).scaffoldBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -763,7 +1035,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textMuted.withValues(alpha: 0.3),
+                color: AppColors.of(context).textMuted.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -771,14 +1043,14 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Icon(Icons.auto_awesome, color: AppColors.teal, size: 28),
+              Icon(Icons.auto_awesome, color: AppColors.of(context).teal, size: 28),
               const SizedBox(width: 12),
               Text(
                 'AI Analysis Complete',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: AppColors.of(context).textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -793,7 +1065,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Blockage Severity', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text('Blockage Severity', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
                       const SizedBox(height: 4),
                       Text(
                         severity,
@@ -806,20 +1078,20 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                     ],
                   ),
                 ),
-                Container(width: 1, height: 40, color: AppColors.textMuted.withValues(alpha: 0.2)),
+                Container(width: 1, height: 40, color: AppColors.of(context).textMuted.withValues(alpha: 0.2)),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Detected Material', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text('Detected Material', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
                       const SizedBox(height: 4),
                       Text(
                         material,
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: AppColors.of(context).textPrimary,
                         ),
                       ),
                     ],
@@ -831,28 +1103,133 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
           const SizedBox(height: 16),
           Text(
             'Analyzed image: ${widget.imageFile.name}',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: AppColors.of(context).textMuted),
           ),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
+            height: 56,
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : () => _submitToFirebase(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.teal,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.of(context).teal,
+                foregroundColor: AppColors.of(context).textOnTeal,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: _isSubmitting 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('SUBMIT REPORT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+              child: _isSubmitting
+                  ? SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(color: AppColors.of(context).textOnTeal, strokeWidth: 2),
+                    )
+                  : const Text(
+                      'CONFIRM REPORT & EARN 50 PTS',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                    ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Resident Urgent Alert Card
+// ─────────────────────────────────────────────────────
+class _ResidentUrgentAlertCard extends StatefulWidget {
+  final String date;
+  const _ResidentUrgentAlertCard({required this.date});
+
+  @override
+  State<_ResidentUrgentAlertCard> createState() => _ResidentUrgentAlertCardState();
+}
+
+class _ResidentUrgentAlertCardState extends State<_ResidentUrgentAlertCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    
+    _colorAnimation = ColorTween(
+      begin: Colors.redAccent.withValues(alpha: 0.15),
+      end: Colors.orangeAccent.withValues(alpha: 0.3),
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _colorAnimation,
+      builder: (context, child) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: _colorAnimation.value,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Text('⛈️', style: TextStyle(fontSize: 32)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'URGENT ALERT',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.redAccent,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Major storm expected ${widget.date}! Earn 2x Points for reporting blocked drains in your neighborhood today.',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

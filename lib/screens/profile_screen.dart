@@ -43,14 +43,14 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
             expandedHeight: 170,
             floating: false,
             pinned: true,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.of(context).scaffoldBg,
             elevation: 0,
             leading: const SizedBox.shrink(),
             flexibleSpace: FlexibleSpaceBar(
@@ -70,12 +70,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             delegate: _TabBarDelegate(
               TabBar(
                 controller: _tabController,
-                indicatorColor: AppColors.teal,
+                indicatorColor: AppColors.of(context).teal,
                 indicatorWeight: 2.5,
-                labelColor: AppColors.textPrimary,
-                unselectedLabelColor: AppColors.textMuted,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                labelColor: AppColors.of(context).textPrimary,
+                unselectedLabelColor: AppColors.of(context).textMuted,
+                labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
                 tabs: const [
                   Tab(text: 'Posts'),
                   Tab(text: 'Reposts'),
@@ -116,7 +116,7 @@ class _ProfileHeader extends StatelessWidget {
           height: 130,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppColors.teal, const Color(0xFF0D47A1)],
+              colors: [AppColors.of(context).teal, const Color(0xFF0D47A1)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -138,14 +138,14 @@ class _ProfileHeader extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
+              border: Border.all(color: AppColors.of(context).scaffoldBg, width: 3),
             ),
             child: CircleAvatar(
               radius: 38,
               backgroundColor: avatarColor,
               child: Text(
                 store.currentUser[0],
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 24),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 24),
               ),
             ),
           ),
@@ -157,11 +157,11 @@ class _ProfileHeader extends StatelessWidget {
           child: OutlinedButton(
             onPressed: () {},
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: Colors.grey.shade400),
+              side: BorderSide(color: AppColors.of(context).textMuted),
               shape: const StadiumBorder(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
-            child: const Text('Edit profile', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F1419), fontSize: 14)),
+            child: Text('Edit profile', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.of(context).textPrimary, fontSize: 14)),
           ),
         ),
       ],
@@ -183,29 +183,29 @@ class _ProfileInfo extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(store.currentUser, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F1419))),
+          Text(store.currentUser, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary)),
           const SizedBox(height: 2),
-          Text(store.currentHandle, style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
+          Text(store.currentHandle, style: TextStyle(fontSize: 15, color: AppColors.of(context).textMuted)),
           const SizedBox(height: 10),
-          Text('Flood reporter & local hero 🌊 Keeping the community safe.', style: TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.4)),
+          Text('Flood reporter & local hero 🌊 Keeping the community safe.', style: TextStyle(fontSize: 15, color: AppColors.of(context).textSecondary, height: 1.4)),
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade500),
+              Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.of(context).textMuted),
               const SizedBox(width: 4),
-              Text('Joined February 2026', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+              Text('Joined February 2026', style: TextStyle(fontSize: 14, color: AppColors.of(context).textMuted)),
             ],
           ),
           const SizedBox(height: 10),
           // Verification stat summary
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: AppColors.tealLight, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: AppColors.of(context).tealLight, borderRadius: BorderRadius.circular(10)),
             child: Row(
               children: [
-                Icon(Icons.shield_rounded, color: AppColors.teal, size: 16),
+                Icon(Icons.shield_rounded, color: AppColors.of(context).teal, size: 16),
                 const SizedBox(width: 8),
-                Text('${myPostCount + myRepostCount} total contributions  •  ${store.likedPostIds.length} verifications', style: TextStyle(fontSize: 13, color: AppColors.teal, fontWeight: FontWeight.w600)),
+                Text('${myPostCount + myRepostCount} total contributions  •  ${store.likedPostIds.length} verifications', style: TextStyle(fontSize: 13, color: AppColors.of(context).teal, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -214,13 +214,13 @@ class _ProfileInfo extends StatelessWidget {
           Row(
             children: [
               RichText(text: TextSpan(children: [
-                TextSpan(text: '24 ', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF0F1419))),
-                TextSpan(text: 'Following', style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
+                TextSpan(text: '24 ', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.of(context).textPrimary)),
+                TextSpan(text: 'Following', style: TextStyle(fontSize: 15, color: AppColors.of(context).textMuted)),
               ])),
               const SizedBox(width: 16),
               RichText(text: TextSpan(children: [
-                TextSpan(text: '8 ', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF0F1419))),
-                TextSpan(text: 'Followers', style: TextStyle(fontSize: 15, color: Colors.grey.shade600)),
+                TextSpan(text: '8 ', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.of(context).textPrimary)),
+                TextSpan(text: 'Followers', style: TextStyle(fontSize: 15, color: AppColors.of(context).textMuted)),
               ])),
             ],
           ),
@@ -244,7 +244,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Colors.white,
+      color: AppColors.of(context).scaffoldBg,
       child: _tabBar,
     );
   }
@@ -269,9 +269,9 @@ class _ProfilePostList extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(emptyIcon, size: 48, color: AppColors.textMuted),
+              Icon(emptyIcon, size: 48, color: AppColors.of(context).textMuted),
               const SizedBox(height: 12),
-              Text(emptyText, style: TextStyle(fontSize: 15, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              Text(emptyText, style: TextStyle(fontSize: 15, color: AppColors.of(context).textSecondary, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -299,9 +299,9 @@ class _ProfileMediaGrid extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.photo_library_outlined, size: 48, color: AppColors.textMuted),
+              Icon(Icons.photo_library_outlined, size: 48, color: AppColors.of(context).textMuted),
               const SizedBox(height: 12),
-              Text('No media yet', style: TextStyle(fontSize: 15, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              Text('No media yet', style: TextStyle(fontSize: 15, color: AppColors.of(context).textSecondary, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -313,8 +313,8 @@ class _ProfileMediaGrid extends StatelessWidget {
       itemCount: posts.length,
       itemBuilder: (_, i) {
         return Image.network(posts[i].imageUrl, fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Container(color: Colors.grey.shade200,
-            child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400)));
+          errorBuilder: (_, __, ___) => Container(color: AppColors.of(context).divider,
+            child: Icon(Icons.broken_image_outlined, color: AppColors.of(context).textMuted)));
       },
     );
   }

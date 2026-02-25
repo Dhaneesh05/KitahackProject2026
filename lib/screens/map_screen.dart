@@ -80,7 +80,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       body: Stack(
         children: [
           // Google Map implementation
@@ -109,21 +109,21 @@ class _MapScreenState extends State<MapScreen> {
                   borderRadius: 20,
                   child: Row(
                     children: [
-                      Icon(Icons.layers_outlined, color: AppColors.teal),
+                      Icon(Icons.layers_outlined, color: AppColors.of(context).teal),
                       const SizedBox(width: 12),
                       Text(
                         'Flood Monitoring Map',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 17,
-                          color: AppColors.textPrimary,
+                          color: AppColors.of(context).textPrimary,
                         ),
                       ),
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.tealLight,
+                          color: AppColors.of(context).tealLight,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -132,7 +132,7 @@ class _MapScreenState extends State<MapScreen> {
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.5,
-                            color: AppColors.teal,
+                            color: AppColors.of(context).teal,
                           ),
                         ),
                       ),
@@ -154,10 +154,10 @@ class _MapScreenState extends State<MapScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _LegendDot(color: AppColors.teal, label: 'Clear'),
+                  _LegendDot(color: AppColors.of(context).teal, label: 'Clear'),
                   _LegendDot(color: Colors.orange, label: 'Warning'),
                   _LegendDot(color: Colors.red.shade400, label: 'Flood Risk'),
-                  _LegendDot(color: AppColors.textMuted, label: 'Offline'),
+                  _LegendDot(color: AppColors.of(context).textMuted, label: 'Offline'),
                 ],
               ),
             ),
@@ -183,7 +183,7 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
       ],
     );
   }
