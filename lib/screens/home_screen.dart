@@ -8,6 +8,8 @@ import '../services/ai_vision_service.dart';
 import '../services/flood_prediction_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
+import '../models/activity.dart';
+import '../models/activity_store.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -116,7 +118,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // ── Recent Reports ──────────────────────────────────────
+              // ── Recent Activity ──────────────────────────────────────
               Text(
                 'RECENT REPORTS',
                 style: TextStyle(
@@ -127,25 +129,30 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              _RecentReportItem(
-                icon: Icons.water_drop_outlined,
-                title: 'Drain #4023 Cleared',
-                subtitle: 'Jalan Ampang • 10 mins ago',
-                color: AppColors.teal,
-              ),
-              const SizedBox(height: 8),
-              _RecentReportItem(
-                icon: Icons.warning_amber_rounded,
-                title: 'Flash Flood Alert Resolved',
-                subtitle: 'Bangsar • 2 hours ago',
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 8),
-              _RecentReportItem(
-                icon: Icons.emoji_events_outlined,
-                title: 'Badge Earned: Water Guardian',
-                subtitle: 'Yesterday',
-                color: Colors.amber,
+              ListenableBuilder(
+                listenable: ActivityStore(),
+                builder: (context, _) {
+                  final activities = ActivityStore().getRecent(limit: 3);
+                  if (activities.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text(
+                          'No recent activity yet.',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (int i = 0; i < activities.length; i++) ...[
+                        _ActivityItem(activity: activities[i]),
+                        if (i < activities.length - 1) const SizedBox(height: 8),
+                      ],
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
             ],
@@ -631,20 +638,11 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
 }
 
 // ─────────────────────────────────────────────────────
-//  Recent Report Item
+//  Activity Item  (used in Recent Reports)
 // ─────────────────────────────────────────────────────
-class _RecentReportItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-
-  const _RecentReportItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-  });
+class _ActivityItem extends StatelessWidget {
+  final Activity activity;
+  const _ActivityItem({required this.activity});
 
   @override
   Widget build(BuildContext context) {
@@ -657,10 +655,10 @@ class _RecentReportItem extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: activity.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: Icon(activity.icon, color: activity.color, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -668,7 +666,7 @@ class _RecentReportItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  activity.title,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -677,13 +675,18 @@ class _RecentReportItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  subtitle,
+                  activity.subtitle,
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Text(
+            activity.timeAgo,
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );

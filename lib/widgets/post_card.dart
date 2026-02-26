@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../models/post_store.dart';
 import '../models/admin_store.dart';
+import '../models/activity.dart';
+import '../models/activity_store.dart';
 import '../theme/app_theme.dart';
 
 class PostCard extends StatefulWidget {
@@ -135,6 +137,15 @@ class _PostCardState extends State<PostCard> {
       widget.post.authorName, 10, 'Your post was verified by ${_store.currentUser}',
       relatedPostId: widget.post.id,
     );
+    // Log activity
+    ActivityStore().addActivity(Activity(
+      id: 'verify_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
+      type: ActivityType.youVerified,
+      title: 'You verified a flood report',
+      subtitle: '${widget.post.authorName}\'s post • ${widget.post.content.length > 40 ? '${widget.post.content.substring(0, 40)}…' : widget.post.content}',
+      timestamp: DateTime.now(),
+      relatedPostId: widget.post.id,
+    ));
     _store.savePostsToCsv();
   }
 
