@@ -74,6 +74,10 @@ class Post {
   int reposts;
   final String floodSeverity;
 
+  // ── Geolocation fields ────────────────────────────────────────────────────
+  final double? latitude;
+  final double? longitude;
+
   // ── Admin fields ──────────────────────────────────────────────────────────
   PostStatus status;
   String? currentSeverity;     // Admin override — if null, uses floodSeverity
@@ -101,6 +105,8 @@ class Post {
     required this.comments,
     required this.reposts,
     required this.floodSeverity,
+    this.latitude,
+    this.longitude,
     Set<String>? verifiedByUsers,
     this.adminVerified = false,
     this.aiVerified = false,
@@ -151,6 +157,14 @@ class Post {
     if (row.length > 16) {
       parsedIsDeleted = row[16].toString().trim().toLowerCase() == 'true';
     }
+    double? parsedLat;
+    double? parsedLng;
+    if (row.length > 17 && row[17].toString().trim().isNotEmpty) {
+      parsedLat = double.tryParse(row[17].toString().trim());
+    }
+    if (row.length > 18 && row[18].toString().trim().isNotEmpty) {
+      parsedLng = double.tryParse(row[18].toString().trim());
+    }
 
     return Post(
       id: row[0].toString(),
@@ -170,6 +184,8 @@ class Post {
       status: parsedStatus,
       currentSeverity: parsedCurrentSeverity,
       isDeleted: parsedIsDeleted,
+      latitude: parsedLat,
+      longitude: parsedLng,
     );
   }
 
@@ -177,7 +193,7 @@ class Post {
   /// Column order: id, authorName, authorHandle, content, imageUrl, timestamp,
   ///               likes, comments, reposts, floodSeverity, userVerifications,
   ///               adminVerified, aiVerified, repostedBy,
-  ///               status, currentSeverity, isDeleted
+  ///               status, currentSeverity, isDeleted, latitude, longitude
   List<dynamic> toCsvRow() {
     return [
       id,
@@ -197,6 +213,8 @@ class Post {
       status.name,
       currentSeverity ?? '',
       isDeleted,
+      latitude ?? '',
+      longitude ?? '',
     ];
   }
 
@@ -212,6 +230,8 @@ class Post {
       comments: comments,
       reposts: reposts,
       floodSeverity: floodSeverity,
+      latitude: latitude,
+      longitude: longitude,
       verifiedByUsers: Set.from(verifiedByUsers),
       adminVerified: adminVerified,
       aiVerified: aiVerified,
