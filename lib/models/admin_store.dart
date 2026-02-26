@@ -1,5 +1,5 @@
 import 'post.dart';
-import 'post_store.dart';
+import '../services/database_service.dart';
 
 /// Types of actions an admin can take.
 enum AdminActionType {
@@ -135,16 +135,20 @@ class AdminStore {
     ));
   }
 
-  // ─── Post actions ─────────────────────────────────────────────────────────
+  // ─── Post actions (now write to Firestore) ────────────────────────────────
 
-  void verifyPost(Post post) {
+  Future<void> verifyPost(Post post) async {
     post.adminVerified = true;
     post.status = PostStatus.verified;
-    logAction(AdminActionType.verifiedPost, postId: post.id, details: 'Verified: ${post.content.substring(0, post.content.length > 40 ? 40 : post.content.length)}...');
-    _persist();
+    logAction(AdminActionType.verifiedPost, postId: post.id,
+        details: 'Verified: ${post.content.substring(0, post.content.length > 40 ? 40 : post.content.length)}...');
+    await DatabaseService().updatePost(post.id, {
+      'adminVerified': true,
+      'status': 'verified',
+    });
   }
 
-  void sendDispatch(Post post, String note) {
+  Future<void> sendDispatch(Post post, String note) async {
     post.status = PostStatus.dispatchSent;
     post.dispatchNotes.add(DispatchNote(
       adminName: adminName,
@@ -152,10 +156,12 @@ class AdminStore {
       timestamp: DateTime.now(),
     ));
     logAction(AdminActionType.dispatchSent, postId: post.id, details: note);
-    _persist();
+    await DatabaseService().updatePost(post.id, {
+      'status': 'dispatchSent',
+    });
   }
 
-  void updateStatus(Post post, PostStatus newStatus) {
+  Future<void> updateStatus(Post post, PostStatus newStatus) async {
     final oldStatus = post.status;
     post.status = newStatus;
 
@@ -174,24 +180,31 @@ class AdminStore {
         actionType = AdminActionType.statusChanged;
     }
     logAction(actionType, postId: post.id, details: '${oldStatus.adminLabel} → ${newStatus.adminLabel}');
-    _persist();
+    await DatabaseService().updatePost(post.id, {
+      'status': newStatus.name,
+    });
   }
 
-  void overrideSeverity(Post post, String newSeverity) {
+  Future<void> overrideSeverity(Post post, String newSeverity) async {
     post.originalSeverity ??= post.floodSeverity;
     final oldSeverity = post.effectiveSeverity;
     post.currentSeverity = newSeverity;
     post.severityOverriddenBy = adminName;
     logAction(AdminActionType.severityOverride, postId: post.id, details: '$oldSeverity → $newSeverity');
-    _persist();
+    await DatabaseService().updatePost(post.id, {
+      'currentSeverity': newSeverity,
+      'severityOverriddenBy': adminName,
+      'originalSeverity': post.originalSeverity,
+    });
   }
 
-  void deletePost(Post post, List<Post> allPosts) {
+  Future<void> deletePost(Post post, List<Post> allPosts) async {
     post.isDeleted = true;
     deletedPosts.add(post);
     allPosts.remove(post);
-    logAction(AdminActionType.deletedPost, postId: post.id, details: 'Deleted: ${post.content.substring(0, post.content.length > 40 ? 40 : post.content.length)}...');
-    _persist();
+    logAction(AdminActionType.deletedPost, postId: post.id,
+        details: 'Deleted: ${post.content.substring(0, post.content.length > 40 ? 40 : post.content.length)}...');
+    await DatabaseService().deletePost(post.id);
   }
 
   void banUser(String username, String handle, String reason) {
@@ -204,7 +217,6 @@ class AdminStore {
     ));
     bannedHandles.add(handle);
     logAction(AdminActionType.bannedUser, targetUser: handle, details: reason);
-    _persist();
   }
 
   void addDispatchNote(Post post, String note) {
@@ -213,12 +225,6 @@ class AdminStore {
       message: note,
       timestamp: DateTime.now(),
     ));
-    _persist();
-  }
-
-  /// Persist all posts to local CSV after any mutation.
-  void _persist() {
-    PostStore().savePostsToCsv();
   }
 
   // ─── Filtered history helpers ─────────────────────────────────────────────
