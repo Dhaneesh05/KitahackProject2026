@@ -8,8 +8,6 @@ import '../services/ai_vision_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/activity.dart';
-import '../models/activity_store.dart';
 import 'login_screen.dart';
 import '../widgets/report_details_dialog.dart';
 import '../main.dart';
@@ -148,6 +146,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              
               StreamBuilder<QuerySnapshot>(
                 stream: DatabaseService().getActiveReports(),
                 builder: (context, snapshot) {
@@ -171,7 +170,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     );
                   }
-<<<<<<< HEAD
 
                   final docs = snapshot.data!.docs.take(3).toList();
 
@@ -246,7 +244,6 @@ class HomeScreen extends StatelessWidget {
                             );
                           },
                         ),
-                      );
                       );
                     }).toList(),
                   );
@@ -905,7 +902,6 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
 // ─────────────────────────────────────────────────────
 //  Activity Item  (used in Recent Reports)
 // ─────────────────────────────────────────────────────
-<<<<<<< HEAD
 class _RecentReportItem extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -920,11 +916,6 @@ class _RecentReportItem extends StatelessWidget {
     required this.color,
     required this.onTap,
   });
-=======
-class _ActivityItem extends StatelessWidget {
-  final Activity activity;
-  const _ActivityItem({required this.activity});
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
 
   @override
   Widget build(BuildContext context) {
@@ -938,10 +929,10 @@ class _ActivityItem extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: activity.color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(activity.icon, color: activity.color, size: 18),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -949,7 +940,7 @@ class _ActivityItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  activity.title,
+                  title,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -958,27 +949,13 @@ class _ActivityItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-<<<<<<< HEAD
                   subtitle,
                   style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary),
-=======
-                  activity.subtitle,
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
                 ),
               ],
             ),
           ),
-<<<<<<< HEAD
           Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.of(context).textMuted),
-=======
-          const SizedBox(width: 8),
-          Text(
-            activity.timeAgo,
-            style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
-          ),
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
         ],
       ),
     );
@@ -1003,42 +980,45 @@ class _AnalysisResultSheet extends StatefulWidget {
 
 class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
   bool _isSubmitting = false;
-<<<<<<< HEAD
   bool _isAnalyzing = true;
   Map<String, dynamic>? _result;
   String? _analysisError;
-=======
-  bool _isFetchingLocation = false;
 
-  late String _selectedSeverity;
-  final TextEditingController _descController = TextEditingController();
+  bool _isFetchingLocation = false;
   double? _latitude;
   double? _longitude;
   String? _locationLabel;
 
+  final TextEditingController _descController = TextEditingController();
+
   static const _severities = ['Clear', 'Low', 'Medium', 'Danger'];
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
+  late String _selectedSeverity;
 
   @override
   void initState() {
     super.initState();
-<<<<<<< HEAD
+    _selectedSeverity = 'Low';
     _analyzeImage();
   }
 
   Future<void> _analyzeImage() async {
     try {
       final res = await widget.resultFuture;
-      if (mounted) setState(() { _result = res; _isAnalyzing = false; });
+      if (mounted) {
+        final aiSeverity = res['severity'] ?? 'Low';
+        final matched = _severities.firstWhere(
+          (s) => s.toLowerCase() == aiSeverity.toString().toLowerCase(),
+          orElse: () => 'Low',
+        );
+        setState(() {
+          _result = res;
+          _isAnalyzing = false;
+          _selectedSeverity = matched;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() { _analysisError = e.toString(); _isAnalyzing = false; });
-=======
-    // Pre-select severity from AI result if available
-    final aiSeverity = widget.result['severity'] ?? 'Low';
-    _selectedSeverity = _severities.firstWhere(
-      (s) => s.toLowerCase() == aiSeverity.toString().toLowerCase(),
-      orElse: () => 'Low',
-    );
+    }
   }
 
   @override
@@ -1052,7 +1032,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       case 'danger': return Colors.red.shade500;
       case 'medium': return Colors.orange;
       case 'low': return Colors.blue.shade400;
-      default: return AppColors.teal;
+      default: return AppColors.of(context).teal;
     }
   }
 
@@ -1099,7 +1079,6 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       }
     } finally {
       if (mounted) setState(() => _isFetchingLocation = false);
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
     }
   }
 
@@ -1119,17 +1098,13 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
           await StorageService().uploadDrainPhoto(widget.imageFile, 'user_resident_123');
 
       // 2. Write to Database
-<<<<<<< HEAD
-      final severity = (_result != null && _result!.containsKey('severity')) ? _result!['severity'] : 'Unknown';
+      final severity = (_result != null && _result!.containsKey('severity')) ? _result!['severity'] : _selectedSeverity;
       final material = (_result != null && _result!.containsKey('material')) ? _result!['material'] : 'Unknown';
-=======
-      final material = widget.result['material'] ?? 'Unknown';
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
 
       await DatabaseService().submitReport({
         'userId': 'user_resident_123',
         'imageUrl': photoUrl,
-        'severityScore': _selectedSeverity,
+        'severityScore': severity,
         'debrisType': material,
         'description': _descController.text.trim(),
         if (_latitude != null) 'latitude': _latitude,
@@ -1137,19 +1112,14 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       });
 
       if (context.mounted) {
-<<<<<<< HEAD
         Navigator.pop(context); // Close sheet
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Report submitted successfully to Firebase!'), backgroundColor: AppColors.of(context).teal),
+          SnackBar(
+            content: const Text('Report submitted successfully! 🌊'),
+            backgroundColor: AppColors.of(context).teal,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-=======
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Report submitted successfully! 🌊'),
-          backgroundColor: AppColors.teal,
-          behavior: SnackBarBehavior.floating,
-        ));
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
       }
     } catch (e) {
       if (context.mounted) {
@@ -1166,7 +1136,6 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
     if (_isAnalyzing) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -1232,121 +1201,9 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
     if (severity == 'High' || severity == 'Error') severityColor = Colors.redAccent;
     if (severity == 'Medium') severityColor = Colors.orange;
 
-=======
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
     return Container(
       decoration: BoxDecoration(
-<<<<<<< HEAD
         color: AppColors.of(context).scaffoldBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.of(context).textMuted.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Icon(Icons.auto_awesome, color: AppColors.of(context).teal, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                'AI Analysis Complete',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.of(context).textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          GlassCard(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Blockage Severity', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
-                      const SizedBox(height: 4),
-                      Text(
-                        severity,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: severityColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(width: 1, height: 40, color: AppColors.of(context).textMuted.withValues(alpha: 0.2)),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Detected Material', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
-                      const SizedBox(height: 4),
-                      Text(
-                        material,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.of(context).textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Analyzed image: ${widget.imageFile.name}',
-            style: TextStyle(fontSize: 12, color: AppColors.of(context).textMuted),
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : () => _submitToFirebase(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.of(context).teal,
-                foregroundColor: AppColors.of(context).textOnTeal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
-              ),
-              child: _isSubmitting
-                  ? SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(color: AppColors.of(context).textOnTeal, strokeWidth: 2),
-                    )
-                  : const Text(
-                      'CONFIRM REPORT & EARN 50 PTS',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                    ),
-            ),
-          ),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-        ],
-=======
-        color: AppColors.scaffoldBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: DraggableScrollableSheet(
@@ -1365,7 +1222,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.textMuted.withValues(alpha: 0.3),
+                    color: AppColors.of(context).textMuted.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -1375,48 +1232,66 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
             // Header
             Row(
               children: [
-                Icon(Icons.auto_awesome, color: AppColors.teal, size: 26),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text('AI Analysis Complete',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                Icon(Icons.auto_awesome, color: AppColors.of(context).teal, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'AI Analysis Complete',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.of(context).textPrimary,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            Text('AI detected the following — review and complete your post.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(
+              'AI detected the following — review and complete your post.',
+              style: TextStyle(fontSize: 13, color: AppColors.of(context).textSecondary),
+            ),
             const SizedBox(height: 20),
 
             // ── AI Result Card ──────────────────────────────────
             GlassCard(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('AI Detected Severity',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('Blockage Severity', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
                         const SizedBox(height: 4),
-                        Text(widget.result['severity'] ?? 'Unknown',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
-                            color: _severityColor(widget.result['severity'] ?? ''))),
+                        Text(
+                          severity,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: severityColor,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  Container(width: 1, height: 36, color: AppColors.textMuted.withValues(alpha: 0.2)),
-                  const SizedBox(width: 14),
+                  Container(width: 1, height: 40, color: AppColors.of(context).textMuted.withValues(alpha: 0.2)),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Detected Material',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('Detected Material', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
                         const SizedBox(height: 4),
-                        Text(widget.result['material'] ?? 'Unknown',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        Text(
+                          material,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.of(context).textPrimary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1427,7 +1302,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
             // ── Description Field ───────────────────────────────
             Text('Your Report', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary, letterSpacing: 0.3)),
+              color: AppColors.of(context).textPrimary, letterSpacing: 0.3)),
             const SizedBox(height: 8),
             GlassCard(
               padding: EdgeInsets.zero,
@@ -1435,11 +1310,11 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 controller: _descController,
                 maxLines: 4,
                 maxLength: 280,
-                style: const TextStyle(fontSize: 15, height: 1.4),
+                style: TextStyle(fontSize: 15, height: 1.4, color: AppColors.of(context).textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Describe what you see… e.g. "Jalan Ampang completely flooded, water waist-deep" #FloodAlert',
-                  hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
-                  counterStyle: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  hintStyle: TextStyle(color: AppColors.of(context).textMuted, fontSize: 14),
+                  counterStyle: TextStyle(color: AppColors.of(context).textMuted, fontSize: 11),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
                 ),
@@ -1449,7 +1324,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
             // ── Severity Selector ───────────────────────────────
             Text('Flood Severity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary, letterSpacing: 0.3)),
+              color: AppColors.of(context).textPrimary, letterSpacing: 0.3)),
             const SizedBox(height: 10),
             Row(
               children: _severities.map((s) {
@@ -1464,20 +1339,20 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: isSelected ? color.withValues(alpha: 0.12) : Colors.grey.shade100,
+                          color: isSelected ? color.withValues(alpha: 0.12) : AppColors.of(context).glassBg.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? color : Colors.grey.shade300,
+                            color: isSelected ? color : AppColors.of(context).textMuted.withValues(alpha: 0.3),
                             width: isSelected ? 2 : 1,
                           ),
                         ),
                         child: Column(
                           children: [
-                            Icon(_severityIcon(s), size: 18, color: isSelected ? color : Colors.grey.shade400),
+                            Icon(_severityIcon(s), size: 18, color: isSelected ? color : AppColors.of(context).textMuted),
                             const SizedBox(height: 4),
                             Text(s, style: TextStyle(
                               fontSize: 11, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                              color: isSelected ? color : Colors.grey.shade500,
+                              color: isSelected ? color : AppColors.of(context).textMuted,
                             )),
                           ],
                         ),
@@ -1491,7 +1366,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
             // ── Geolocation Tag ─────────────────────────────────
             Text('Location Tag', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary, letterSpacing: 0.3)),
+              color: AppColors.of(context).textPrimary, letterSpacing: 0.3)),
             const SizedBox(height: 8),
             GlassCard(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1499,7 +1374,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 children: [
                   Icon(
                     _latitude != null ? Icons.location_on_rounded : Icons.location_off_outlined,
-                    color: _latitude != null ? AppColors.teal : AppColors.textMuted,
+                    color: _latitude != null ? AppColors.of(context).teal : AppColors.of(context).textMuted,
                     size: 22,
                   ),
                   const SizedBox(width: 12),
@@ -1508,7 +1383,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                       _locationLabel ?? 'No location tagged yet',
                       style: TextStyle(
                         fontSize: 13,
-                        color: _latitude != null ? AppColors.textPrimary : AppColors.textMuted,
+                        color: _latitude != null ? AppColors.of(context).textPrimary : AppColors.of(context).textMuted,
                         fontWeight: _latitude != null ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
@@ -1519,8 +1394,8 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                     child: ElevatedButton(
                       onPressed: _isFetchingLocation ? null : _fetchLocation,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.teal,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.of(context).teal,
+                        foregroundColor: AppColors.of(context).textOnTeal,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         elevation: 0,
@@ -1535,30 +1410,40 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Analyzed image: ${widget.imageFile.name}',
+              style: TextStyle(fontSize: 12, color: AppColors.of(context).textMuted),
+            ),
             const SizedBox(height: 28),
 
             // ── Submit Button ───────────────────────────────────
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 56,
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : () => _submitToFirebase(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.of(context).teal,
+                  foregroundColor: AppColors.of(context).textOnTeal,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(width: 22, height: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('SUBMIT REPORT',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: AppColors.of(context).textOnTeal, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'CONFIRM REPORT & EARN 50 PTS',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                      ),
               ),
             ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
           ],
         ),
->>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
       ),
     );
   }
