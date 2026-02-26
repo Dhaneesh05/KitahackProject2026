@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../models/post_store.dart';
 import '../models/admin_store.dart';
+import '../models/activity.dart';
+import '../models/activity_store.dart';
 import '../theme/app_theme.dart';
 
 /// A post card specifically for the Admin feed, with inline admin actions.
@@ -82,6 +84,14 @@ class _AdminPostCardState extends State<AdminPostCard> {
   void _verifyPost() {
     setState(() => _admin.verifyPost(widget.post));
     widget.onStatusChanged?.call();
+    ActivityStore().addActivity(Activity(
+      id: 'admin_verify_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
+      type: ActivityType.adminVerified,
+      title: 'Post admin-verified',
+      subtitle: '${widget.post.authorName}\'s report marked as verified',
+      timestamp: DateTime.now(),
+      relatedPostId: widget.post.id,
+    ));
     _showSnack('Post verified ✅');
   }
 
@@ -185,6 +195,14 @@ class _AdminPostCardState extends State<AdminPostCard> {
                   onTap: isActive ? null : () {
                     setState(() => _admin.overrideSeverity(widget.post, s));
                     widget.onStatusChanged?.call();
+                    ActivityStore().addActivity(Activity(
+                      id: 'severity_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
+                      type: ActivityType.severityChanged,
+                      title: 'Severity changed to $s',
+                      subtitle: '${widget.post.authorName}\'s report was updated by admin',
+                      timestamp: DateTime.now(),
+                      relatedPostId: widget.post.id,
+                    ));
                     Navigator.pop(ctx);
                     _showSnack('Severity overridden to $s ⚠️');
                   },
@@ -250,6 +268,14 @@ class _AdminPostCardState extends State<AdminPostCard> {
                   onTap: isActive ? null : () {
                     setState(() => _admin.updateStatus(widget.post, s));
                     widget.onStatusChanged?.call();
+                    ActivityStore().addActivity(Activity(
+                      id: 'status_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
+                      type: ActivityType.statusChanged,
+                      title: 'Status updated: ${s.adminLabel}',
+                      subtitle: '${widget.post.authorName}\'s report status changed',
+                      timestamp: DateTime.now(),
+                      relatedPostId: widget.post.id,
+                    ));
                     Navigator.pop(ctx);
                     _showSnack('Status: ${s.adminLabel}');
                   },
