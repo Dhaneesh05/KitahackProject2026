@@ -145,7 +145,13 @@ class _PostList extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       color: AppColors.teal,
-      child: ListView.builder(itemCount: posts.length, itemBuilder: (_, i) => PostCard(post: posts[i])),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 650),
+          child: ListView.builder(itemCount: posts.length, itemBuilder: (_, i) => PostCard(post: posts[i])),
+        ),
+      ),
     );
   }
 }

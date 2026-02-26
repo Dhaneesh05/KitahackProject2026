@@ -160,12 +160,18 @@ class _AdminPostList extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       color: const Color(0xFF1E3A3A),
-      child: ListView.builder(
-        itemCount: posts.length,
-        itemBuilder: (_, i) => AdminPostCard(
-          post: posts[i],
-          onDeleted: onChanged,
-          onStatusChanged: onChanged,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 650),
+          child: ListView.builder(
+            itemCount: posts.length,
+            itemBuilder: (_, i) => AdminPostCard(
+              post: posts[i],
+              onDeleted: onChanged,
+              onStatusChanged: onChanged,
+            ),
+          ),
         ),
       ),
     );
