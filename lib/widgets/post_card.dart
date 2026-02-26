@@ -262,28 +262,36 @@ class _PostCardState extends State<PostCard> {
                                 Container(
                                   color: Colors.black,
                                   width: double.infinity,
-                                  child: Image.network(
-                                    widget.post.imageUrl,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      height: 200,
-                                      color: Colors.grey.shade200,
-                                      child: Icon(
-                                          Icons.broken_image_outlined,
-                                          color: Colors.grey.shade400,
-                                          size: 48)),
-                                    loadingBuilder: (_, child, progress) {
-                                      if (progress == null) return child;
-                                      return Container(
-                                        height: 200,
-                                        color: Colors.grey.shade100,
-                                        child: Center(
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: AppColors.teal)),
-                                      );
-                                    },
-                                  ),
+                                  child: widget.post.imageUrl.startsWith('assets/')
+                                      ? Image.asset(
+                                          widget.post.imageUrl,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            height: 200,
+                                            color: Colors.grey.shade200,
+                                            child: Icon(Icons.broken_image_outlined,
+                                                color: Colors.grey.shade400, size: 48)),
+                                        )
+                                      : Image.network(
+                                          widget.post.imageUrl,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            height: 200,
+                                            color: Colors.grey.shade200,
+                                            child: Icon(Icons.broken_image_outlined,
+                                                color: Colors.grey.shade400, size: 48)),
+                                          loadingBuilder: (_, child, progress) {
+                                            if (progress == null) return child;
+                                            return Container(
+                                              height: 200,
+                                              color: Colors.grey.shade100,
+                                              child: Center(
+                                                  child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: AppColors.teal)),
+                                            );
+                                          },
+                                        ),
                                 ),
                                 Positioned(
                                   top: 10,
