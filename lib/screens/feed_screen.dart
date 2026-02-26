@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../models/post_store.dart';
+import '../services/database_service.dart';
 import '../widgets/post_card.dart';
 import '../theme/app_theme.dart';
 
@@ -11,16 +12,15 @@ class FeedScreen extends StatefulWidget {
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateMixin {
+class _FeedScreenState extends State<FeedScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _store = PostStore();
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadPosts();
   }
 
   @override
@@ -29,23 +29,6 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  Future<void> _loadPosts() async {
-    try {
-      await _store.loadPostsFromLocal();
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _refresh() async {
-    setState(() => _isLoading = true);
-    await _loadPosts();
-  }
-
-  List<Post> get _validPosts => _store.posts.where((p) => !p.isDeleted).toList();
-  List<Post> get _alertPosts => _validPosts.where((p) => p.effectiveSeverity.toLowerCase() == 'danger').toList();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,24 +36,37 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
       body: SafeArea(
         child: Column(
           children: [
-            // Header
+            // ── Header ──────────────────────────────────────────────
             Container(
-              decoration: BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
+              decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade200))),
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: AppColors.tealLight, shape: BoxShape.circle),
-                          child: Icon(Icons.water_drop_rounded, color: AppColors.teal, size: 20),
+                          decoration: BoxDecoration(
+                              color: AppColors.tealLight,
+                              shape: BoxShape.circle),
+                          child: Icon(Icons.water_drop_rounded,
+                              color: AppColors.teal, size: 20),
                         ),
                         const SizedBox(width: 12),
-                        Text('Flood Reports', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5)),
+                        Text('Flood Reports',
+                            style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.5)),
                         const Spacer(),
-                        Icon(Icons.tune_rounded, color: AppColors.textMuted, size: 22),
+                        Icon(Icons.tune_rounded,
+                            color: AppColors.textMuted, size: 22),
                       ],
                     ),
                   ),
@@ -80,23 +76,68 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
                     indicatorWeight: 2.5,
                     labelColor: AppColors.textPrimary,
                     unselectedLabelColor: AppColors.textMuted,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                    labelStyle: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 15),
+                    unselectedLabelStyle: const TextStyle(
+                        fontWeight: FontWeight.w500, fontSize: 15),
                     tabs: const [Tab(text: 'For You'), Tab(text: 'Alerts 🚨')],
                   ),
                 ],
               ),
             ),
+
+            // ── Live Feed via Firestore Stream ──────────────────────
             Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator(color: AppColors.teal, strokeWidth: 2))
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _PostList(posts: _validPosts, onRefresh: _refresh),
-                        _PostList(posts: _alertPosts, onRefresh: _refresh),
-                      ],
-                    ),
+              child: StreamBuilder<List<Post>>(
+                stream: DatabaseService().getFeedPostsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.teal, strokeWidth: 2));
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.cloud_off_rounded,
+                                size: 52, color: AppColors.textMuted),
+                            const SizedBox(height: 12),
+                            Text('Could not load posts',
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16)),
+                            const SizedBox(height: 6),
+                            Text('${snapshot.error}',
+                                style: TextStyle(
+                                    color: AppColors.textMuted, fontSize: 12),
+                                textAlign: TextAlign.center),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final allPosts = snapshot.data ?? [];
+                  final alertPosts = allPosts
+                      .where((p) =>
+                          p.effectiveSeverity.toLowerCase() == 'danger')
+                      .toList();
+
+                  return TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _PostList(posts: allPosts),
+                      _PostList(posts: alertPosts),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -116,20 +157,25 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => _NewPostSheet(onPost: (post) {
-        setState(() => _store.posts.insert(0, post));
-        // Award points for submitting a report
-        _store.addPoints(_store.currentUser, 50, 'Submitted a flood report', relatedPostId: post.id);
+        // Award points for submitting a report (in-memory)
+        _store.addPoints(
+          _store.currentUser,
+          50,
+          'Submitted a flood report',
+          relatedPostId: post.id,
+        );
       }),
     );
   }
 }
 
+// ─── Post List Widget ─────────────────────────────────────────────────────────
 class _PostList extends StatelessWidget {
   final List<Post> posts;
-  final Future<void> Function() onRefresh;
-  const _PostList({required this.posts, required this.onRefresh});
+  const _PostList({required this.posts});
 
   @override
   Widget build(BuildContext context) {
@@ -138,18 +184,24 @@ class _PostList extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.water_drop_outlined, size: 52, color: AppColors.textMuted),
           const SizedBox(height: 12),
-          Text('No reports yet', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 16)),
+          Text('No reports yet',
+              style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16)),
+          const SizedBox(height: 6),
+          Text('Be the first to report a flood!',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         ]),
       );
     }
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      color: AppColors.teal,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 650),
-          child: ListView.builder(itemCount: posts.length, itemBuilder: (_, i) => PostCard(post: posts[i])),
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 650),
+        child: ListView.builder(
+          itemCount: posts.length,
+          itemBuilder: (_, i) => PostCard(post: posts[i]),
         ),
       ),
     );
@@ -167,6 +219,7 @@ class _NewPostSheet extends StatefulWidget {
 class _NewPostSheetState extends State<_NewPostSheet> {
   final _controller = TextEditingController();
   String _severity = 'Low';
+  bool _isSubmitting = false;
 
   final List<Map<String, dynamic>> _severities = [
     {'label': 'Clear', 'color': AppColors.teal},
@@ -176,23 +229,51 @@ class _NewPostSheetState extends State<_NewPostSheet> {
   ];
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 16, left: 16, right: 16, top: 16),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          left: 16,
+          right: 16,
+          top: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.grey))),
               const Spacer(),
-              const Text('New Report', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+              const Text('New Report',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
               const Spacer(),
               ElevatedButton(
-                onPressed: _submitPost,
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.teal, foregroundColor: Colors.white, shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), elevation: 0),
-                child: const Text('Post', style: TextStyle(fontWeight: FontWeight.w700)),
+                onPressed: _isSubmitting ? null : _submitPost,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 8),
+                    elevation: 0),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text('Post',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -202,13 +283,19 @@ class _NewPostSheetState extends State<_NewPostSheet> {
             autofocus: true,
             decoration: InputDecoration(
               hintText: "What's happening with floods near you?",
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+              hintStyle:
+                  TextStyle(color: Colors.grey.shade400, fontSize: 16),
               border: InputBorder.none,
             ),
-            style: const TextStyle(fontSize: 16, color: Color(0xFF0F1419)),
+            style:
+                const TextStyle(fontSize: 16, color: Color(0xFF0F1419)),
           ),
           const SizedBox(height: 8),
-          const Text('Flood Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
+          const Text('Flood Level',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: Colors.grey)),
           const SizedBox(height: 8),
           Row(
             children: _severities.map((s) {
@@ -216,44 +303,98 @@ class _NewPostSheetState extends State<_NewPostSheet> {
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
-                  onTap: () => setState(() => _severity = s['label'] as String),
+                  onTap: () =>
+                      setState(() => _severity = s['label'] as String),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: isSelected ? (s['color'] as Color).withValues(alpha: 0.12) : Colors.grey.shade100,
+                      color: isSelected
+                          ? (s['color'] as Color).withValues(alpha: 0.12)
+                          : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: isSelected ? (s['color'] as Color) : Colors.transparent, width: 1.5),
+                      border: Border.all(
+                          color: isSelected
+                              ? (s['color'] as Color)
+                              : Colors.transparent,
+                          width: 1.5),
                     ),
-                    child: Text(s['label'] as String, style: TextStyle(color: isSelected ? (s['color'] as Color) : Colors.grey, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, fontSize: 13)),
+                    child: Text(
+                      s['label'] as String,
+                      style: TextStyle(
+                          color: isSelected
+                              ? (s['color'] as Color)
+                              : Colors.grey,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          fontSize: 13),
+                    ),
                   ),
                 ),
               );
             }).toList(),
           ),
           const SizedBox(height: 16),
-          Row(children: [Icon(Icons.image_outlined, color: AppColors.teal), const SizedBox(width: 16), Icon(Icons.location_on_outlined, color: AppColors.teal)]),
+          Row(children: [
+            Icon(Icons.image_outlined, color: AppColors.teal),
+            const SizedBox(width: 16),
+            Icon(Icons.location_on_outlined, color: AppColors.teal)
+          ]),
           const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  void _submitPost() {
-    if (_controller.text.trim().isEmpty) { Navigator.pop(context); return; }
+  Future<void> _submitPost() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      Navigator.pop(context);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
     final store = PostStore();
-    final post = Post(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      authorName: store.currentUser,
-      authorHandle: store.currentHandle,
-      content: _controller.text.trim(),
-      imageUrl: 'https://images.unsplash.com/photo-1561484930-998b6a7b22e8?w=600&fit=crop',
-      timestamp: 'just now',
-      likes: 0, comments: 0, reposts: 0,
-      floodSeverity: _severity,
-      adminVerified: false, aiVerified: false,
-    );
-    widget.onPost(post);
-    Navigator.pop(context);
+
+    try {
+      final docId = await DatabaseService().submitReport({
+        'authorName': store.currentUser,
+        'authorHandle': store.currentHandle,
+        'description': text,
+        'content': text,
+        'imageUrl': '',
+        'severityScore': _severity,
+        'floodSeverity': _severity,
+      });
+
+      // Build a local Post for the points callback
+      final post = Post(
+        id: docId,
+        authorName: store.currentUser,
+        authorHandle: store.currentHandle,
+        content: text,
+        imageUrl: '',
+        timestamp: 'just now',
+        likes: 0,
+        comments: 0,
+        reposts: 0,
+        floodSeverity: _severity,
+      );
+
+      widget.onPost(post);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error posting: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 }

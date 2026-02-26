@@ -3,6 +3,8 @@ import '../models/post_store.dart';
 import '../models/post.dart';
 import '../widgets/post_card.dart';
 import '../theme/app_theme.dart';
+import 'login_screen.dart';
+import 'upload_mock_data_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -40,6 +42,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     return colors[_store.currentUser.hashCode.abs() % colors.length];
   }
 
+  void _handleLogout(BuildContext context) {
+    _store.logout();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,6 +70,22 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               preferredSize: Size.zero,
               child: Container(),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.bug_report_outlined, color: AppColors.textMuted),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UploadMockDataScreen()),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: AppColors.textMuted),
+                onPressed: () => _handleLogout(context),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           SliverToBoxAdapter(
             child: _ProfileInfo(store: _store, myPostCount: _myPosts.length, myRepostCount: _myReposts.length),
