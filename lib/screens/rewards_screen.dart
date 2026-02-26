@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/post_store.dart';
-import '../models/post.dart';
+
 import '../theme/app_theme.dart';
 
 class RewardsScreen extends StatefulWidget {

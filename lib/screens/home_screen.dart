@@ -26,26 +26,16 @@ class HomeScreen extends StatelessWidget {
       );
       
       if (photo != null && context.mounted) {
-        // Show loading indicator
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Center(child: CircularProgressIndicator(color: AppColors.of(context).teal)),
-        );
-
-        // Analyze image with Gemini
-        final result = await AiVisionService().analyzeDrainImage(photo);
+        // Start analyzing image with Gemini
+        final resultFuture = AiVisionService().analyzeDrainImage(photo);
         
-        // Close loading indicator
-        if (context.mounted) Navigator.pop(context);
-
         if (context.mounted) {
-          // Show AI Analysis Results and pass the XFile object itself
+          // Show AI Analysis Results immediately and pass the future
           showModalBottomSheet(
             context: context,
             backgroundColor: Colors.transparent,
             isScrollControlled: true,
-            builder: (context) => _AnalysisResultSheet(result: result, imageFile: photo),
+            builder: (context) => _AnalysisResultSheet(resultFuture: resultFuture, imageFile: photo),
           );
         }
       }
@@ -205,18 +195,28 @@ class HomeScreen extends StatelessWidget {
                       // Severity mapping
                       final dynamic rawScore = data['severityScore'];
                       int score = 0;
-                      if (rawScore is int) score = rawScore;
-                      else if (rawScore is String) {
-                        if (rawScore.toLowerCase() == 'high') score = 85;
-                        else if (rawScore.toLowerCase() == 'medium') score = 65;
-                        else if (rawScore.toLowerCase() == 'low') score = 30;
-                        else score = int.tryParse(rawScore) ?? 0;
-                      } 
-                      else if (rawScore is double) score = rawScore.toInt();
+                      if (rawScore is int) {
+                        score = rawScore;
+                      } else if (rawScore is String) {
+                        if (rawScore.toLowerCase() == 'high') {
+                          score = 85;
+                        } else if (rawScore.toLowerCase() == 'medium') {
+                          score = 65;
+                        } else if (rawScore.toLowerCase() == 'low') {
+                          score = 30;
+                        } else {
+                          score = int.tryParse(rawScore) ?? 0;
+                        }
+                      } else if (rawScore is double) {
+                        score = rawScore.toInt();
+                      }
 
                       Color color = Colors.green;
-                      if (score >= 80) color = Colors.redAccent;
-                      else if (score >= 60) color = Colors.orange;
+                      if (score >= 80) {
+                        color = Colors.redAccent;
+                      } else if (score >= 60) {
+                        color = Colors.orange;
+                      }
 
                       // Icon mapping
                       IconData icon = Icons.water_drop_outlined;
@@ -423,7 +423,7 @@ class _SettingsDrawer extends StatelessWidget {
                               ),
                               Switch(
                                 value: isDark,
-                                activeColor: AppColors.of(context).teal,
+                                activeThumbColor: AppColors.of(context).teal,
                                 onChanged: (val) {
                                   appThemeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
                                 },
@@ -962,11 +962,11 @@ class _RecentReportItem extends StatelessWidget {
 }
 
 class _AnalysisResultSheet extends StatefulWidget {
-  final Map<String, dynamic> result;
+  final Future<Map<String, dynamic>> resultFuture;
   final XFile imageFile;
 
   const _AnalysisResultSheet({
-    required this.result,
+    required this.resultFuture,
     required this.imageFile,
   });
 
@@ -976,6 +976,24 @@ class _AnalysisResultSheet extends StatefulWidget {
 
 class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
   bool _isSubmitting = false;
+  bool _isAnalyzing = true;
+  Map<String, dynamic>? _result;
+  String? _analysisError;
+
+  @override
+  void initState() {
+    super.initState();
+    _analyzeImage();
+  }
+
+  Future<void> _analyzeImage() async {
+    try {
+      final res = await widget.resultFuture;
+      if (mounted) setState(() { _result = res; _isAnalyzing = false; });
+    } catch (e) {
+      if (mounted) setState(() { _analysisError = e.toString(); _isAnalyzing = false; });
+    }
+  }
 
   Future<void> _submitToFirebase(BuildContext context) async {
     setState(() => _isSubmitting = true);
@@ -984,8 +1002,8 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       final photoUrl = await StorageService().uploadDrainPhoto(widget.imageFile, 'user_resident_123');
       
       // 2. Write to Database
-      final severity = widget.result['severity'] ?? 'Unknown';
-      final material = widget.result['material'] ?? 'Unknown';
+      final severity = (_result != null && _result!.containsKey('severity')) ? _result!['severity'] : 'Unknown';
+      final material = (_result != null && _result!.containsKey('material')) ? _result!['material'] : 'Unknown';
 
       await DatabaseService().submitReport({
         'userId': 'user_resident_123', // Hardcoded for demo Resident
@@ -1013,8 +1031,66 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final severity = widget.result['severity'] ?? 'Unknown';
-    final material = widget.result['material'] ?? 'Unknown';
+    if (_isAnalyzing) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.of(context).scaffoldBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: AppColors.of(context).teal, strokeWidth: 2)),
+                const SizedBox(width: 12),
+                Text('Analyzing Image...', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary, letterSpacing: -0.5)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(height: 60, child: Row(children: [Icon(Icons.auto_awesome, color: AppColors.of(context).teal), const SizedBox(width: 16), Expanded(child: Text('AI is scanning for blockages...', style: TextStyle(color: AppColors.of(context).textSecondary)))])),
+            ),
+            const SizedBox(height: 16),
+            Text('Analyzed image: ${widget.imageFile.name}', style: TextStyle(fontSize: 12, color: AppColors.of(context).textMuted)),
+            const SizedBox(height: 32),
+            SizedBox(height: 56, width: double.infinity, child: ElevatedButton(onPressed: null, style: ElevatedButton.styleFrom(backgroundColor: AppColors.of(context).textMuted.withValues(alpha: 0.3), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 0), child: Text('ANALYZING...', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: AppColors.of(context).textMuted)))),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ],
+        ),
+      );
+    }
+    
+    if (_analysisError != null) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: AppColors.of(context).scaffoldBg, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             Center(child: Icon(Icons.error_outline, color: Colors.redAccent, size: 48)),
+             const SizedBox(height: 16),
+             Text('Analysis Failed: $_analysisError', style: TextStyle(color: Colors.redAccent, fontSize: 16), textAlign: TextAlign.center),
+             const SizedBox(height: 24),
+             SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: () => Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: AppColors.of(context).teal, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: Text('Close', style: TextStyle(fontSize: 16, color: AppColors.of(context).textOnTeal)))),
+             SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ]
+        ),
+      );
+    }
+
+    final severity = _result?['severity'] ?? 'Unknown';
+    final material = _result?['material'] ?? 'Unknown';
     
     Color severityColor = AppColors.of(context).teal;
     if (severity == 'High' || severity == 'Error') severityColor = Colors.redAccent;
