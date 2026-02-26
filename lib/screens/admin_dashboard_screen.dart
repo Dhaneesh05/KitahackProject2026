@@ -314,14 +314,21 @@ class AdminDashboardScreen extends StatelessWidget {
                                       
                                       final dynamic rawScore = data['severityScore'];
                                       int score = 0;
-                                      if (rawScore is int) score = rawScore;
-                                      else if (rawScore is String) {
-                                        if (rawScore.toLowerCase() == 'high') score = 85;
-                                        else if (rawScore.toLowerCase() == 'medium') score = 65;
-                                        else if (rawScore.toLowerCase() == 'low') score = 30;
-                                        else score = int.tryParse(rawScore) ?? 0;
+                                      if (rawScore is int) {
+                                        score = rawScore;
+                                      } else if (rawScore is String) {
+                                        if (rawScore.toLowerCase() == 'high') {
+                                          score = 85;
+                                        } else if (rawScore.toLowerCase() == 'medium') {
+                                          score = 65;
+                                        } else if (rawScore.toLowerCase() == 'low') {
+                                          score = 30;
+                                        } else {
+                                          score = int.tryParse(rawScore) ?? 0;
+                                        }
+                                      } else if (rawScore is double) {
+                                        score = rawScore.toInt();
                                       }
-                                      else if (rawScore is double) score = rawScore.toInt();
 
                                       String severityText = 'Minor';
                                       Color severityColor = Colors.green;

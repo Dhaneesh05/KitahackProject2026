@@ -172,7 +172,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> _severities = [
+    final List<Map<String, dynamic>> severities = [
       {'label': 'Clear', 'color': AppColors.of(context).teal},
       {'label': 'Low', 'color': Colors.blue},
       {'label': 'Medium', 'color': Colors.orange},
@@ -212,7 +212,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
           Text('Flood Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.of(context).textMuted)),
           const SizedBox(height: 8),
           Row(
-            children: _severities.map((s) {
+            children: severities.map((s) {
               final isSelected = _severity == s['label'];
               return Padding(
                 padding: const EdgeInsets.only(right: 8),

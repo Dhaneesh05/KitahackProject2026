@@ -15,7 +15,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   // Center map on Kuala Lumpur as an example
   static const LatLng _center = LatLng(3.1390, 101.6869);
-  GoogleMapController? _mapController;
+
   Set<Marker> _markers = {};
 
   @override
@@ -70,12 +70,10 @@ class _MapScreenState extends State<MapScreen> {
     final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     final Uint8List uint8List = byteData!.buffer.asUint8List();
 
-    return BitmapDescriptor.fromBytes(uint8List);
+    return BitmapDescriptor.bytes(uint8List);
   }
 
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
-  }
+  void _onMapCreated(GoogleMapController controller) {}
 
   @override
   Widget build(BuildContext context) {
