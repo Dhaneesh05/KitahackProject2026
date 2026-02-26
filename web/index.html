@@ -52,20 +52,20 @@
           }
           var script = document.createElement('script');
           if (apiKey && apiKey !== 'your_api_key_here') {
-            script.src = "https://maps.googleapis.com/maps/api/js?key=" + apiKey;
+            script.src = "https://maps.googleapis.com/maps/api/js?key=" + apiKey + "&loading=async&callback=Function.prototype";
           } else {
-            script.src = "https://maps.googleapis.com/maps/api/js";
+            script.src = "https://maps.googleapis.com/maps/api/js?loading=async&callback=Function.prototype";
           }
           document.head.appendChild(script);
         } else {
           var script = document.createElement('script');
-          script.src = "https://maps.googleapis.com/maps/api/js";
+          script.src = "https://maps.googleapis.com/maps/api/js?loading=async&callback=Function.prototype";
           document.head.appendChild(script);
         }
       } catch (e) {
         console.error("Failed to load .env:", e);
         var script = document.createElement('script');
-        script.src = "https://maps.googleapis.com/maps/api/js";
+        script.src = "https://maps.googleapis.com/maps/api/js?loading=async&callback=Function.prototype";
         document.head.appendChild(script);
       }
     });

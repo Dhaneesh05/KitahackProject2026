@@ -1,4 +1,5 @@
-/// Status of a flood report as managed by admins.
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum PostStatus {
   pending,
   verified,
@@ -187,6 +188,93 @@ class Post {
       latitude: parsedLat,
       longitude: parsedLng,
     );
+  }
+
+  /// Creates a Post from a Firestore DocumentSnapshot.
+  factory Post.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    // Parse status
+    PostStatus parsedStatus = PostStatus.values.firstWhere(
+      (s) => s.name == (data['status'] ?? 'pending'),
+      orElse: () => PostStatus.pending,
+    );
+
+    // Parse timestamp — could be Firestore Timestamp or a plain string
+    String timestampStr = 'just now';
+    final ts = data['timestamp'];
+    if (ts is Timestamp) {
+      final dt = ts.toDate();
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 60) {
+        timestampStr = '${diff.inMinutes}m ago';
+      } else if (diff.inHours < 24) {
+        timestampStr = '${diff.inHours}h ago';
+      } else {
+        timestampStr = '${diff.inDays}d ago';
+      }
+    } else if (ts is String) {
+      timestampStr = ts;
+    }
+
+    // Parse geo
+    double? lat;
+    double? lng;
+    if (data['location'] is GeoPoint) {
+      final geo = data['location'] as GeoPoint;
+      lat = geo.latitude;
+      lng = geo.longitude;
+    }
+
+    // Parse verified users
+    final verifiedList = (data['verifiedByUsers'] as List<dynamic>?) ?? [];
+    final verifiedSet = Set<String>.from(verifiedList.map((e) => e.toString()));
+
+    return Post(
+      id: doc.id,
+      authorName: data['authorName'] as String? ?? 'Anonymous',
+      authorHandle: data['authorHandle'] as String? ?? '@unknown',
+      content: data['description'] as String? ?? data['content'] as String? ?? '',
+      imageUrl: data['imageUrl'] as String? ?? '',
+      timestamp: timestampStr,
+      likes: (data['likes'] as num?)?.toInt() ?? 0,
+      comments: (data['comments'] as num?)?.toInt() ?? 0,
+      reposts: (data['reposts'] as num?)?.toInt() ?? 0,
+      floodSeverity: data['severityScore'] as String? ?? data['floodSeverity'] as String? ?? 'Low',
+      latitude: lat,
+      longitude: lng,
+      verifiedByUsers: verifiedSet,
+      adminVerified: data['adminVerified'] as bool? ?? false,
+      aiVerified: data['aiVerified'] as bool? ?? false,
+      status: parsedStatus,
+      currentSeverity: data['currentSeverity'] as String?,
+      isDeleted: data['isDeleted'] as bool? ?? false,
+    );
+  }
+
+  /// Converts this Post to a Firestore-compatible Map.
+  Map<String, dynamic> toFirestore() {
+    return {
+      'authorName': authorName,
+      'authorHandle': authorHandle,
+      'content': content,
+      'description': content,
+      'imageUrl': imageUrl,
+      'likes': likes,
+      'comments': comments,
+      'reposts': reposts,
+      'floodSeverity': floodSeverity,
+      'severityScore': floodSeverity,
+      'verifiedByUsers': verifiedByUsers.toList(),
+      'adminVerified': adminVerified,
+      'aiVerified': aiVerified,
+      'status': status.name,
+      'currentSeverity': currentSeverity,
+      'isDeleted': isDeleted,
+      'timestamp': FieldValue.serverTimestamp(),
+      if (latitude != null && longitude != null)
+        'location': GeoPoint(latitude!, longitude!),
+    };
   }
 
   /// Converts this Post back to a CSV row list for persistence.
