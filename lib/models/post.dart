@@ -1,3 +1,67 @@
+/// Status of a flood report as managed by admins.
+enum PostStatus {
+  pending,
+  verified,
+  dispatchSent,
+  beingResolved,
+  weatherHindrance,
+  resolved,
+  notFlooded,
+}
+
+extension PostStatusExt on PostStatus {
+  String get label {
+    switch (this) {
+      case PostStatus.pending:
+        return 'Under Review';
+      case PostStatus.verified:
+        return 'Verified';
+      case PostStatus.dispatchSent:
+        return 'Help is on the way';
+      case PostStatus.beingResolved:
+        return 'Being Resolved';
+      case PostStatus.weatherHindrance:
+        return 'Weather Hindrance';
+      case PostStatus.resolved:
+        return 'Resolved';
+      case PostStatus.notFlooded:
+        return 'Not Flooded';
+    }
+  }
+
+  String get adminLabel {
+    switch (this) {
+      case PostStatus.pending:
+        return 'Pending';
+      case PostStatus.verified:
+        return 'Verified (Active)';
+      case PostStatus.dispatchSent:
+        return 'Dispatch Sent';
+      case PostStatus.beingResolved:
+        return 'Being Resolved';
+      case PostStatus.weatherHindrance:
+        return 'Weather Hindrance';
+      case PostStatus.resolved:
+        return 'Resolved';
+      case PostStatus.notFlooded:
+        return 'False Alarm';
+    }
+  }
+}
+
+/// A single dispatch note (admin-only chat thread on a post).
+class DispatchNote {
+  final String adminName;
+  final String message;
+  final DateTime timestamp;
+
+  DispatchNote({
+    required this.adminName,
+    required this.message,
+    required this.timestamp,
+  });
+}
+
 class Post {
   final String id;
   final String authorName;
@@ -9,6 +73,18 @@ class Post {
   int comments;
   int reposts;
   final String floodSeverity;
+
+  // ── Geolocation fields ────────────────────────────────────────────────────
+  final double? latitude;
+  final double? longitude;
+
+  // ── Admin fields ──────────────────────────────────────────────────────────
+  PostStatus status;
+  String? currentSeverity;     // Admin override — if null, uses floodSeverity
+  String? originalSeverity;    // Snapshot of user-reported severity before override
+  String? severityOverriddenBy;
+  final List<DispatchNote> dispatchNotes;
+  bool isDeleted;
 
   // Verification — stores handles of users who verified this post
   final Set<String> verifiedByUsers;
@@ -29,11 +105,23 @@ class Post {
     required this.comments,
     required this.reposts,
     required this.floodSeverity,
+    this.latitude,
+    this.longitude,
     Set<String>? verifiedByUsers,
     this.adminVerified = false,
     this.aiVerified = false,
     this.repostedBy,
-  }) : verifiedByUsers = verifiedByUsers ?? {};
+    this.status = PostStatus.pending,
+    this.currentSeverity,
+    this.originalSeverity,
+    this.severityOverriddenBy,
+    List<DispatchNote>? dispatchNotes,
+    this.isDeleted = false,
+  })  : verifiedByUsers = verifiedByUsers ?? {},
+        dispatchNotes = dispatchNotes ?? [];
+
+  /// The effective severity shown in the UI (admin override takes priority).
+  String get effectiveSeverity => currentSeverity ?? floodSeverity;
 
   /// At least 3 distinct users have verified this post
   bool get userVerified => verifiedByUsers.length >= 3;
@@ -52,6 +140,32 @@ class Post {
       verifiedSet.add('@seed_user_$i');
     }
 
+    // Parse admin columns if present (cols 14-16)
+    PostStatus parsedStatus = PostStatus.pending;
+    if (row.length > 14 && row[14].toString().trim().isNotEmpty) {
+      final statusStr = row[14].toString().trim();
+      parsedStatus = PostStatus.values.firstWhere(
+        (s) => s.name == statusStr,
+        orElse: () => PostStatus.pending,
+      );
+    }
+    String? parsedCurrentSeverity;
+    if (row.length > 15 && row[15].toString().trim().isNotEmpty) {
+      parsedCurrentSeverity = row[15].toString().trim();
+    }
+    bool parsedIsDeleted = false;
+    if (row.length > 16) {
+      parsedIsDeleted = row[16].toString().trim().toLowerCase() == 'true';
+    }
+    double? parsedLat;
+    double? parsedLng;
+    if (row.length > 17 && row[17].toString().trim().isNotEmpty) {
+      parsedLat = double.tryParse(row[17].toString().trim());
+    }
+    if (row.length > 18 && row[18].toString().trim().isNotEmpty) {
+      parsedLng = double.tryParse(row[18].toString().trim());
+    }
+
     return Post(
       id: row[0].toString(),
       authorName: row[1].toString(),
@@ -67,7 +181,41 @@ class Post {
       adminVerified: (row.length > 11 ? row[11].toString().toLowerCase() : 'false') == 'true',
       aiVerified: (row.length > 12 ? row[12].toString().toLowerCase() : 'false') == 'true',
       repostedBy: (row.length > 13 && row[13].toString().trim().isNotEmpty) ? row[13].toString() : null,
+      status: parsedStatus,
+      currentSeverity: parsedCurrentSeverity,
+      isDeleted: parsedIsDeleted,
+      latitude: parsedLat,
+      longitude: parsedLng,
     );
+  }
+
+  /// Converts this Post back to a CSV row list for persistence.
+  /// Column order: id, authorName, authorHandle, content, imageUrl, timestamp,
+  ///               likes, comments, reposts, floodSeverity, userVerifications,
+  ///               adminVerified, aiVerified, repostedBy,
+  ///               status, currentSeverity, isDeleted, latitude, longitude
+  List<dynamic> toCsvRow() {
+    return [
+      id,
+      authorName,
+      authorHandle,
+      content,
+      imageUrl,
+      timestamp,
+      likes,
+      comments,
+      reposts,
+      floodSeverity,
+      verifiedByUsers.length,
+      adminVerified,
+      aiVerified,
+      repostedBy ?? '',
+      status.name,
+      currentSeverity ?? '',
+      isDeleted,
+      latitude ?? '',
+      longitude ?? '',
+    ];
   }
 
   Post copyWithRepost(String repostedByUser) {
@@ -82,10 +230,17 @@ class Post {
       comments: comments,
       reposts: reposts,
       floodSeverity: floodSeverity,
+      latitude: latitude,
+      longitude: longitude,
       verifiedByUsers: Set.from(verifiedByUsers),
       adminVerified: adminVerified,
       aiVerified: aiVerified,
       repostedBy: repostedByUser,
+      status: status,
+      currentSeverity: currentSeverity,
+      originalSeverity: originalSeverity,
+      severityOverriddenBy: severityOverriddenBy,
+      dispatchNotes: List.from(dispatchNotes),
     );
   }
 }

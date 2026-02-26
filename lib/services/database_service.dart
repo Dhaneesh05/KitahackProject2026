@@ -26,8 +26,10 @@ class DatabaseService {
       reportData['status'] = 'Pending';
       reportData['timestamp'] = FieldValue.serverTimestamp();
 
-      // Dummy location since native geolocation is not fully implemented yet
-      reportData['location'] = const GeoPoint(3.1390, 101.6869); // Default KL
+      // Build GeoPoint from real coordinates if provided, fallback to KL centroid
+      final double lat = reportData.remove('latitude') ?? 3.1390;
+      final double lng = reportData.remove('longitude') ?? 101.6869;
+      reportData['location'] = GeoPoint(lat, lng);
 
       debugPrint('FIREBASE: Attempting to add report data: $reportData');
       final docRef = await _firestore.collection('reports').add(reportData);

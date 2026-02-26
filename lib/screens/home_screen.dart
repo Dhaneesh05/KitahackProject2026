@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -7,6 +8,8 @@ import '../services/ai_vision_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/activity.dart';
+import '../models/activity_store.dart';
 import 'login_screen.dart';
 import '../widgets/report_details_dialog.dart';
 import '../main.dart';
@@ -134,7 +137,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // ── Recent Reports ──────────────────────────────────────
+              // ── Recent Activity ──────────────────────────────────────
               Text(
                 'RECENT REPORTS',
                 style: TextStyle(
@@ -145,7 +148,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              
               StreamBuilder<QuerySnapshot>(
                 stream: DatabaseService().getActiveReports(),
                 builder: (context, snapshot) {
@@ -169,6 +171,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     );
                   }
+<<<<<<< HEAD
 
                   final docs = snapshot.data!.docs.take(3).toList();
 
@@ -243,6 +246,7 @@ class HomeScreen extends StatelessWidget {
                             );
                           },
                         ),
+                      );
                       );
                     }).toList(),
                   );
@@ -899,8 +903,9 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
 }
 
 // ─────────────────────────────────────────────────────
-//  Recent Report Item
+//  Activity Item  (used in Recent Reports)
 // ─────────────────────────────────────────────────────
+<<<<<<< HEAD
 class _RecentReportItem extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -915,6 +920,11 @@ class _RecentReportItem extends StatelessWidget {
     required this.color,
     required this.onTap,
   });
+=======
+class _ActivityItem extends StatelessWidget {
+  final Activity activity;
+  const _ActivityItem({required this.activity});
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
 
   @override
   Widget build(BuildContext context) {
@@ -928,10 +938,10 @@ class _RecentReportItem extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: activity.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: Icon(activity.icon, color: activity.color, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -939,7 +949,7 @@ class _RecentReportItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  activity.title,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -948,19 +958,36 @@ class _RecentReportItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
+<<<<<<< HEAD
                   subtitle,
                   style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary),
+=======
+                  activity.subtitle,
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
                 ),
               ],
             ),
           ),
+<<<<<<< HEAD
           Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.of(context).textMuted),
+=======
+          const SizedBox(width: 8),
+          Text(
+            activity.timeAgo,
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+          ),
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
         ],
       ),
     );
   }
 }
 
+// ─────────────────────────────────────────────────────
+//  Analysis Result Sheet  (with post compose + geolocation)
+// ─────────────────────────────────────────────────────
 class _AnalysisResultSheet extends StatefulWidget {
   final Future<Map<String, dynamic>> resultFuture;
   final XFile imageFile;
@@ -976,13 +1003,26 @@ class _AnalysisResultSheet extends StatefulWidget {
 
 class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
   bool _isSubmitting = false;
+<<<<<<< HEAD
   bool _isAnalyzing = true;
   Map<String, dynamic>? _result;
   String? _analysisError;
+=======
+  bool _isFetchingLocation = false;
+
+  late String _selectedSeverity;
+  final TextEditingController _descController = TextEditingController();
+  double? _latitude;
+  double? _longitude;
+  String? _locationLabel;
+
+  static const _severities = ['Clear', 'Low', 'Medium', 'Danger'];
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
 
   @override
   void initState() {
     super.initState();
+<<<<<<< HEAD
     _analyzeImage();
   }
 
@@ -992,37 +1032,132 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       if (mounted) setState(() { _result = res; _isAnalyzing = false; });
     } catch (e) {
       if (mounted) setState(() { _analysisError = e.toString(); _isAnalyzing = false; });
+=======
+    // Pre-select severity from AI result if available
+    final aiSeverity = widget.result['severity'] ?? 'Low';
+    _selectedSeverity = _severities.firstWhere(
+      (s) => s.toLowerCase() == aiSeverity.toString().toLowerCase(),
+      orElse: () => 'Low',
+    );
+  }
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Color _severityColor(String s) {
+    switch (s.toLowerCase()) {
+      case 'danger': return Colors.red.shade500;
+      case 'medium': return Colors.orange;
+      case 'low': return Colors.blue.shade400;
+      default: return AppColors.teal;
+    }
+  }
+
+  IconData _severityIcon(String s) {
+    switch (s.toLowerCase()) {
+      case 'danger': return Icons.warning_amber_rounded;
+      case 'medium': return Icons.water_rounded;
+      case 'low': return Icons.water_drop_outlined;
+      default: return Icons.check_circle_outline_rounded;
+    }
+  }
+
+  Future<void> _fetchLocation() async {
+    setState(() => _isFetchingLocation = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw Exception('Location services are disabled.');
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        throw Exception('Location permission denied.');
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      setState(() {
+        _latitude = pos.latitude;
+        _longitude = pos.longitude;
+        _locationLabel =
+            '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Location error: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isFetchingLocation = false);
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
     }
   }
 
   Future<void> _submitToFirebase(BuildContext context) async {
+    if (_descController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please write a description for your report.'),
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     setState(() => _isSubmitting = true);
     try {
       // 1. Upload to Storage
-      final photoUrl = await StorageService().uploadDrainPhoto(widget.imageFile, 'user_resident_123');
-      
+      final photoUrl =
+          await StorageService().uploadDrainPhoto(widget.imageFile, 'user_resident_123');
+
       // 2. Write to Database
+<<<<<<< HEAD
       final severity = (_result != null && _result!.containsKey('severity')) ? _result!['severity'] : 'Unknown';
       final material = (_result != null && _result!.containsKey('material')) ? _result!['material'] : 'Unknown';
+=======
+      final material = widget.result['material'] ?? 'Unknown';
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
 
       await DatabaseService().submitReport({
-        'userId': 'user_resident_123', // Hardcoded for demo Resident
+        'userId': 'user_resident_123',
         'imageUrl': photoUrl,
-        'severityScore': severity,
+        'severityScore': _selectedSeverity,
         'debrisType': material,
+        'description': _descController.text.trim(),
+        if (_latitude != null) 'latitude': _latitude,
+        if (_longitude != null) 'longitude': _longitude,
       });
 
       if (context.mounted) {
+<<<<<<< HEAD
         Navigator.pop(context); // Close sheet
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Report submitted successfully to Firebase!'), backgroundColor: AppColors.of(context).teal),
         );
+=======
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Report submitted successfully! 🌊'),
+          backgroundColor: AppColors.teal,
+          behavior: SnackBarBehavior.floating,
+        ));
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Firebase Error: $e'), backgroundColor: Colors.redAccent),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -1031,6 +1166,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     if (_isAnalyzing) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -1096,9 +1232,11 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
     if (severity == 'High' || severity == 'Error') severityColor = Colors.redAccent;
     if (severity == 'Medium') severityColor = Colors.orange;
 
+=======
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
+<<<<<<< HEAD
         color: AppColors.of(context).scaffoldBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1207,6 +1345,220 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
           ),
           SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
         ],
+=======
+        color: AppColors.scaffoldBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.6,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+          children: [
+            // Drag handle
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.textMuted.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+
+            // Header
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, color: AppColors.teal, size: 26),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text('AI Analysis Complete',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text('AI detected the following — review and complete your post.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 20),
+
+            // ── AI Result Card ──────────────────────────────────
+            GlassCard(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('AI Detected Severity',
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        const SizedBox(height: 4),
+                        Text(widget.result['severity'] ?? 'Unknown',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                            color: _severityColor(widget.result['severity'] ?? ''))),
+                      ],
+                    ),
+                  ),
+                  Container(width: 1, height: 36, color: AppColors.textMuted.withValues(alpha: 0.2)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Detected Material',
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        const SizedBox(height: 4),
+                        Text(widget.result['material'] ?? 'Unknown',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Description Field ───────────────────────────────
+            Text('Your Report', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary, letterSpacing: 0.3)),
+            const SizedBox(height: 8),
+            GlassCard(
+              padding: EdgeInsets.zero,
+              child: TextField(
+                controller: _descController,
+                maxLines: 4,
+                maxLength: 280,
+                style: const TextStyle(fontSize: 15, height: 1.4),
+                decoration: InputDecoration(
+                  hintText: 'Describe what you see… e.g. "Jalan Ampang completely flooded, water waist-deep" #FloodAlert',
+                  hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                  counterStyle: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Severity Selector ───────────────────────────────
+            Text('Flood Severity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary, letterSpacing: 0.3)),
+            const SizedBox(height: 10),
+            Row(
+              children: _severities.map((s) {
+                final isSelected = s == _selectedSeverity;
+                final color = _severityColor(s);
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedSeverity = s),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? color.withValues(alpha: 0.12) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? color : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(_severityIcon(s), size: 18, color: isSelected ? color : Colors.grey.shade400),
+                            const SizedBox(height: 4),
+                            Text(s, style: TextStyle(
+                              fontSize: 11, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                              color: isSelected ? color : Colors.grey.shade500,
+                            )),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Geolocation Tag ─────────────────────────────────
+            Text('Location Tag', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary, letterSpacing: 0.3)),
+            const SizedBox(height: 8),
+            GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    _latitude != null ? Icons.location_on_rounded : Icons.location_off_outlined,
+                    color: _latitude != null ? AppColors.teal : AppColors.textMuted,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _locationLabel ?? 'No location tagged yet',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _latitude != null ? AppColors.textPrimary : AppColors.textMuted,
+                        fontWeight: _latitude != null ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 36,
+                    child: ElevatedButton(
+                      onPressed: _isFetchingLocation ? null : _fetchLocation,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                      child: _isFetchingLocation
+                          ? const SizedBox(width: 16, height: 16,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : Text(_latitude != null ? 'Update' : 'Tag Me',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // ── Submit Button ───────────────────────────────────
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : () => _submitToFirebase(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.teal,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(width: 22, height: 22,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('SUBMIT REPORT',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+              ),
+            ),
+          ],
+        ),
+>>>>>>> 9a7de4d648b265ce4ceaf43086bf680c594bb4cc
       ),
     );
   }
