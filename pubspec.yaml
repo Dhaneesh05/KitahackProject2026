@@ -46,6 +46,10 @@ dependencies:
   firebase_storage: ^13.0.6
   shared_preferences: ^2.3.4
 
+dependency_overrides:
+  # geolocator_android 5.x uses Color.toARGB32() which was removed in Flutter 3.27+
+  geolocator_android: 4.6.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

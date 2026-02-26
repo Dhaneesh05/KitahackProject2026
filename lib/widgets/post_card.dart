@@ -242,43 +242,45 @@ class _PostCardState extends State<PostCard> {
                       // Image + severity badge
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: Stack(
-                          children: [
-                            Image.network(
-                              widget.post.imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: 200,
-                              errorBuilder: (_, __, ___) => Container(
-                                height: 200, color: Colors.grey.shade200,
-                                child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)),
-                              loadingBuilder: (_, child, progress) {
-                                if (progress == null) return child;
-                                return Container(height: 200, color: Colors.grey.shade100,
-                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teal)));
-                              },
-                            ),
-                            Positioned(
-                              top: 10, left: 10,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: _severityColor.withValues(alpha: 0.92),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [BoxShadow(color: _severityColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3))],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(_severityIcon, color: Colors.white, size: 13),
-                                    const SizedBox(width: 4),
-                                    Text(widget.post.effectiveSeverity.toUpperCase(),
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8)),
-                                  ],
+                        child: AspectRatio(
+                          aspectRatio: 3 / 4,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.network(
+                                widget.post.imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade200,
+                                  child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)),
+                                loadingBuilder: (_, child, progress) {
+                                  if (progress == null) return child;
+                                  return Container(color: Colors.grey.shade100,
+                                    child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teal)));
+                                },
+                              ),
+                              Positioned(
+                                top: 10, left: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: _severityColor.withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [BoxShadow(color: _severityColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3))],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(_severityIcon, color: Colors.white, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(widget.post.effectiveSeverity.toUpperCase(),
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8)),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),

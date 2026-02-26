@@ -655,46 +655,49 @@ class _AdminPostCardState extends State<AdminPostCard> {
                       // Image + severity badge
                       ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: Stack(
-                          children: [
-                            Image.network(
-                              post.imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity, height: 200,
-                              errorBuilder: (_, __, ___) => Container(
-                                height: 200, color: Colors.grey.shade200,
-                                child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)),
-                              loadingBuilder: (_, child, progress) {
-                                if (progress == null) return child;
-                                return Container(height: 200, color: Colors.grey.shade100,
-                                  child: Center(child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: AppColors.teal)));
-                              },
-                            ),
-                            Positioned(
-                              top: 10, left: 10,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: _severityColor(severity).withValues(alpha: 0.92),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [BoxShadow(
-                                    color: _severityColor(severity).withValues(alpha: 0.4),
-                                    blurRadius: 8, offset: const Offset(0, 3))],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(_severityIcon(severity), color: Colors.white, size: 13),
-                                    const SizedBox(width: 4),
-                                    Text(severity.toUpperCase(), style: const TextStyle(
-                                      color: Colors.white, fontWeight: FontWeight.w800,
-                                      fontSize: 11, letterSpacing: 0.8)),
-                                  ],
+                        child: AspectRatio(
+                          aspectRatio: 3 / 4,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.network(
+                                post.imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade200,
+                                  child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)),
+                                loadingBuilder: (_, child, progress) {
+                                  if (progress == null) return child;
+                                  return Container(color: Colors.grey.shade100,
+                                    child: Center(child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: AppColors.teal)));
+                                },
+                              ),
+                              Positioned(
+                                top: 10, left: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: _severityColor(severity).withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [BoxShadow(
+                                      color: _severityColor(severity).withValues(alpha: 0.4),
+                                      blurRadius: 8, offset: const Offset(0, 3))],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(_severityIcon(severity), color: Colors.white, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(severity.toUpperCase(), style: const TextStyle(
+                                        color: Colors.white, fontWeight: FontWeight.w800,
+                                        fontSize: 11, letterSpacing: 0.8)),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -714,68 +717,57 @@ class _AdminPostCardState extends State<AdminPostCard> {
                 top: BorderSide(color: Colors.grey.shade200),
               ),
             ),
-            child: Column(
-              children: [
-                // Row 1: Primary actions
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _AdminActionBtn(
-                      icon: Icons.verified_outlined,
-                      label: 'Verify',
-                      color: Colors.blue,
-                      isActive: post.adminVerified,
-                      onTap: post.adminVerified ? null : _verifyPost,
-                    ),
-                    _AdminActionBtn(
-                      icon: Icons.local_shipping_outlined,
-                      label: 'Dispatch',
-                      color: Colors.orange,
-                      onTap: _sendDispatch,
-                    ),
-                    _AdminActionBtn(
-                      icon: Icons.sync_rounded,
-                      label: 'Status',
-                      color: AppColors.teal,
-                      onTap: _changeStatus,
-                    ),
-                    _AdminActionBtn(
-                      icon: Icons.warning_amber_rounded,
-                      label: 'Severity',
-                      color: Colors.red,
-                      onTap: _overrideSeverity,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                // Row 2: Secondary actions
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _AdminActionBtn(
-                      icon: Icons.message_outlined,
-                      label: 'Notes',
-                      color: Colors.deepOrange,
-                      badge: post.dispatchNotes.isNotEmpty ? post.dispatchNotes.length.toString() : null,
-                      onTap: _viewDispatchNotes,
-                    ),
-                    _AdminActionBtn(
-                      icon: Icons.delete_outline_rounded,
-                      label: 'Delete',
-                      color: Colors.red.shade700,
-                      onTap: _deletePost,
-                    ),
-                    _AdminActionBtn(
-                      icon: Icons.person_off_outlined,
-                      label: isBanned ? 'Banned' : 'Ban',
-                      color: Colors.red.shade700,
-                      isActive: isBanned,
-                      onTap: isBanned ? null : _banUser,
-                    ),
-                    const SizedBox(width: 60), // spacer
-                  ],
-                ),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _AdminActionBtn(
+                    icon: Icons.verified_outlined,
+                    label: 'Verify',
+                    color: Colors.blue,
+                    isActive: post.adminVerified,
+                    onTap: post.adminVerified ? null : _verifyPost,
+                  ),
+                  _AdminActionBtn(
+                    icon: Icons.local_shipping_outlined,
+                    label: 'Dispatch',
+                    color: Colors.orange,
+                    onTap: _sendDispatch,
+                  ),
+                  _AdminActionBtn(
+                    icon: Icons.sync_rounded,
+                    label: 'Status',
+                    color: AppColors.teal,
+                    onTap: _changeStatus,
+                  ),
+                  _AdminActionBtn(
+                    icon: Icons.warning_amber_rounded,
+                    label: 'Severity',
+                    color: Colors.red,
+                    onTap: _overrideSeverity,
+                  ),
+                  _AdminActionBtn(
+                    icon: Icons.message_outlined,
+                    label: 'Notes',
+                    color: Colors.deepOrange,
+                    badge: post.dispatchNotes.isNotEmpty ? post.dispatchNotes.length.toString() : null,
+                    onTap: _viewDispatchNotes,
+                  ),
+                  _AdminActionBtn(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Delete',
+                    color: Colors.red.shade700,
+                    onTap: _deletePost,
+                  ),
+                  _AdminActionBtn(
+                    icon: Icons.person_off_outlined,
+                    label: isBanned ? 'Banned' : 'Ban',
+                    color: Colors.red.shade700,
+                    isActive: isBanned,
+                    onTap: isBanned ? null : _banUser,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
