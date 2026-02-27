@@ -1,0 +1,13 @@
+﻿Analyzing admin_feed_screen.dart...
+
+  error - admin_feed_screen.dart:172:9 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
+  error - admin_feed_screen.dart:172:10 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
+  error - admin_feed_screen.dart:173:7 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
+  error - admin_feed_screen.dart:173:8 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
+  error - admin_feed_screen.dart:174:5 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
+  error - admin_feed_screen.dart:174:6 - Unexpected text ';'. Try removing the text. - unexpected_token
+  error - admin_feed_screen.dart:175:3 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
+  error - admin_feed_screen.dart:176:1 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
+warning - admin_feed_screen.dart:2:8 - Unused import: 'package:cloud_firestore/cloud_firestore.dart'. Try removing the import directive. - unused_import
+
+9 issues found.

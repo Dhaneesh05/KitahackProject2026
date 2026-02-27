@@ -81,9 +81,9 @@ class _AdminPostCardState extends State<AdminPostCard> {
 
   // ─── Admin Actions ────────────────────────────────────────────────────────
 
-  void _verifyPost() {
-    setState(() => _admin.verifyPost(widget.post));
-    widget.onStatusChanged?.call();
+  Future<void> _verifyPost() async {
+    await _admin.verifyPost(widget.post);
+    if (mounted) setState(() {});
     ActivityStore().addActivity(Activity(
       id: 'admin_verify_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
       type: ActivityType.adminVerified,
@@ -142,10 +142,10 @@ class _AdminPostCardState extends State<AdminPostCard> {
             child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
-                setState(() => _admin.sendDispatch(widget.post, controller.text.trim()));
-                widget.onStatusChanged?.call();
+                await _admin.sendDispatch(widget.post, controller.text.trim());
+                if (mounted) setState(() {});
                 Navigator.pop(ctx);
                 _showSnack('Dispatch sent 🚒');
               }
@@ -192,9 +192,9 @@ class _AdminPostCardState extends State<AdminPostCard> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: InkWell(
-                  onTap: isActive ? null : () {
-                    setState(() => _admin.overrideSeverity(widget.post, s));
-                    widget.onStatusChanged?.call();
+                  onTap: isActive ? null : () async {
+                    await _admin.overrideSeverity(widget.post, s);
+                    if (mounted) setState(() {});
                     ActivityStore().addActivity(Activity(
                       id: 'severity_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
                       type: ActivityType.severityChanged,
@@ -265,9 +265,9 @@ class _AdminPostCardState extends State<AdminPostCard> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: InkWell(
-                  onTap: isActive ? null : () {
-                    setState(() => _admin.updateStatus(widget.post, s));
-                    widget.onStatusChanged?.call();
+                  onTap: isActive ? null : () async {
+                    await _admin.updateStatus(widget.post, s);
+                    if (mounted) setState(() {});
                     ActivityStore().addActivity(Activity(
                       id: 'status_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
                       type: ActivityType.statusChanged,
@@ -458,10 +458,10 @@ class _AdminPostCardState extends State<AdminPostCard> {
             child: Text('Cancel', style: TextStyle(color: Colors.grey.shade600)),
           ),
           ElevatedButton(
-            onPressed: () {
-              _admin.deletePost(widget.post, _store.posts);
-              Navigator.pop(ctx);
-              widget.onDeleted?.call();
+            onPressed: () async {
+              final nav = Navigator.of(ctx);
+              await _admin.deletePost(widget.post, _store.posts);
+              nav.pop();
               _showSnack('Post deleted 🗑️');
             },
             style: ElevatedButton.styleFrom(
@@ -678,57 +678,73 @@ class _AdminPostCardState extends State<AdminPostCard> {
                       Text(post.content, style: const TextStyle(
                         fontSize: 15, color: Color(0xFF0F1419), height: 1.4)),
                       const SizedBox(height: 10),
-                      // Image + severity badge
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 340),
-                        child: ClipRRect(
+                      // Image + severity badge (BoxFit.contain — no cropping)
+                      if (post.imageUrl.isNotEmpty)
+                        ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.network(
+                          child: Stack(
+                            children: [
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                    maxHeight: 400, minWidth: double.infinity),
+                                child: Image.network(
                                   post.imageUrl,
-                                  fit: BoxFit.cover,
+                                  fit: BoxFit.contain,
+                                  width: double.infinity,
                                   errorBuilder: (_, __, ___) => Container(
+                                    height: 180,
                                     color: Colors.grey.shade200,
-                                    child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)),
+                                    child: Icon(Icons.broken_image_outlined,
+                                        color: Colors.grey.shade400, size: 48)),
                                   loadingBuilder: (_, child, progress) {
                                     if (progress == null) return child;
-                                    return Container(color: Colors.grey.shade100,
-                                      child: Center(child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: AppColors.of(context).teal)));
+                                    return Container(
+                                      height: 180,
+                                      color: Colors.grey.shade100,
+                                      child: Center(
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: AppColors.of(context).teal)));
                                   },
                                 ),
-                                Positioned(
-                                  top: 10, left: 10,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(
-                                      color: _severityColor(severity).withValues(alpha: 0.92),
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [BoxShadow(
-                                        color: _severityColor(severity).withValues(alpha: 0.4),
-                                        blurRadius: 8, offset: const Offset(0, 3))],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(_severityIcon(severity), color: Colors.white, size: 13),
-                                        const SizedBox(width: 4),
-                                        Text(severity.toUpperCase(), style: const TextStyle(
-                                          color: Colors.white, fontWeight: FontWeight.w800,
-                                          fontSize: 11, letterSpacing: 0.8)),
-                                      ],
-                                    ),
+                              ),
+                              Positioned(
+                                top: 10,
+                                left: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: _severityColor(severity)
+                                        .withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                          color: _severityColor(severity)
+                                              .withValues(alpha: 0.4),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3))
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(_severityIcon(severity),
+                                          color: Colors.white, size: 13),
+                                      const SizedBox(width: 4),
+                                      Text(severity.toUpperCase(),
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11,
+                                              letterSpacing: 0.8)),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
                       const SizedBox(height: 10),
                     ],
                   ),
