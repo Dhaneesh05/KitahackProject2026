@@ -137,4 +137,10 @@ class PostStore {
     final csvString = const ListToCsvConverter().convert(rows);
     await prefs.setString(_csvStorageKey, csvString);
   }
+
+  /// Handles user logout by clearing session data (mock implementation)
+  void logout() {
+    // In a real app, clear tokens/session here
+    // For this mock, we just use it to prevent the compile error
+  }
 }

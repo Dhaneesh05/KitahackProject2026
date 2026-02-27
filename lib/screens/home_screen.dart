@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:geolocator/geolocator.dart' hide ActivityType;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
@@ -10,6 +10,9 @@ import '../services/storage_service.dart';
 import '../services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/weather_service.dart';
+import '../models/activity.dart';
+import '../models/activity_store.dart';
+import '../models/post_store.dart';
 import 'login_screen.dart';
 import '../widgets/report_details_dialog.dart';
 import '../main.dart';
@@ -1155,23 +1158,52 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
     }
     setState(() => _isSubmitting = true);
     try {
-      // 1. Upload to Storage
-      final photoUrl =
-          await StorageService().uploadDrainPhoto(widget.imageFile, 'user_resident_123');
+      final store = PostStore();
 
-      // 2. Write to Database
-      final severity = (_result != null && _result!.containsKey('severity')) ? _result!['severity'] : _selectedSeverity;
+      // 1. Upload image to Firebase Storage
+      final photoUrl = await StorageService().uploadDrainPhoto(
+        widget.imageFile,
+        store.currentHandle.replaceAll('@', ''),
+      );
+
+      // 2. Build report data with full post fields
       final material = (_result != null && _result!.containsKey('material')) ? _result!['material'] : 'Unknown';
+      final aiSeverity = (_result != null && _result!.containsKey('severity')) ? _result!['severity'] : _selectedSeverity;
 
       await DatabaseService().submitReport({
-        'userId': 'user_resident_123',
-        'imageUrl': photoUrl,
-        'severityScore': severity,
-        'debrisType': material,
+        // Post identity
+        'authorName': store.currentUser,
+        'authorHandle': store.currentHandle,
+        // Content
         'description': _descController.text.trim(),
+        'content': _descController.text.trim(),
+        // Image (real Firebase Storage URL)
+        'imageUrl': photoUrl,
+        // Severity
+        'severityScore': _selectedSeverity,
+        'floodSeverity': _selectedSeverity,
+        // AI metadata
+        'aiSeverity': aiSeverity,
+        'debrisType': material,
+        'aiVerified': true,
+        // Location
         if (_latitude != null) 'latitude': _latitude,
         if (_longitude != null) 'longitude': _longitude,
       });
+
+      // Log activity
+      ActivityStore().addActivity(Activity(
+        id: 'report_${DateTime.now().millisecondsSinceEpoch}',
+        type: ActivityType.youPosted,
+        title: 'You submitted a flood report',
+        subtitle: _descController.text.trim().length > 40
+            ? '${_descController.text.trim().substring(0, 40)}…'
+            : _descController.text.trim(),
+        timestamp: DateTime.now(),
+      ));
+
+      // Award points for submitting
+      store.addPoints(store.currentUser, 50, 'Submitted a flood report');
 
       if (context.mounted) {
         Navigator.pop(context); // Close sheet

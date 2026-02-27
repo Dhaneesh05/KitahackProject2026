@@ -251,43 +251,70 @@ class _PostCardState extends State<PostCard> {
                       Text(widget.post.content, style: TextStyle(fontSize: 15, color: AppColors.of(context).textPrimary, height: 1.4)),
                       const SizedBox(height: 10),
                       // Image + severity badge
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 340),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: AspectRatio(
-                            aspectRatio: 16 / 9,
+                      if (widget.post.imageUrl.isNotEmpty)
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(
+                              maxHeight: 380, minHeight: 120),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
                             child: Stack(
-                              fit: StackFit.expand,
                               children: [
-                                Image.network(
-                                  widget.post.imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: Colors.grey.shade200,
-                                    child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)),
-                                  loadingBuilder: (_, child, progress) {
-                                    if (progress == null) return child;
-                                    return Container(color: Colors.grey.shade100,
-                                      child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.of(context).teal)));
-                                  },
+                                Container(
+                                  color: Colors.black,
+                                  width: double.infinity,
+                                  child: Image.network(
+                                    widget.post.imageUrl,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      height: 200,
+                                      color: Colors.grey.shade200,
+                                      child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 48)
+                                    ),
+                                    loadingBuilder: (_, child, progress) {
+                                      if (progress == null) return child;
+                                      return Container(
+                                        height: 200,
+                                        color: Colors.grey.shade100,
+                                        child: Center(
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.of(context).teal)
+                                        )
+                                      );
+                                    },
+                                  ),
                                 ),
                                 Positioned(
-                                  top: 10, left: 10,
+                                  top: 10,
+                                  left: 10,
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 5),
                                     decoration: BoxDecoration(
-                                      color: _severityColor.withValues(alpha: 0.92),
+                                      color: _severityColor
+                                          .withValues(alpha: 0.92),
                                       borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [BoxShadow(color: _severityColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3))],
+                                      boxShadow: [
+                                        BoxShadow(
+                                            color: _severityColor
+                                                .withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 3))
+                                      ],
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(_severityIcon, color: Colors.white, size: 13),
+                                        Icon(_severityIcon,
+                                            color: Colors.white, size: 13),
                                         const SizedBox(width: 4),
-                                        Text(widget.post.effectiveSeverity.toUpperCase(),
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8)),
+                                        Text(
+                                          widget.post.effectiveSeverity
+                                              .toUpperCase(),
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 11,
+                                              letterSpacing: 0.8),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -297,7 +324,6 @@ class _PostCardState extends State<PostCard> {
                             ),
                           ),
                         ),
-                      ),
                       const SizedBox(height: 8),
                       // Verification bar
                       _VerificationBar(
