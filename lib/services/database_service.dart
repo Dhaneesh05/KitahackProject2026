@@ -90,6 +90,5 @@ class DatabaseService {
   /// Soft-deletes a post by setting isDeleted=true.
   Future<void> deletePost(String docId) async {
     await _firestore.collection('reports').doc(docId).update({'isDeleted': true});
->>>>>>> 8bab052 (V7.2: Uploaded data to only use Firebase as the feed and properly set database)
   }
 }

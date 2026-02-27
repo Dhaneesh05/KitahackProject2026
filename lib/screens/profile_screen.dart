@@ -4,7 +4,6 @@ import '../models/post.dart';
 import '../widgets/post_card.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart';
-import 'upload_mock_data_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -71,17 +70,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               child: Container(),
             ),
             actions: [
+              // Temporary bug button removed
               IconButton(
-                icon: const Icon(Icons.bug_report_outlined, color: AppColors.textMuted),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const UploadMockDataScreen()),
-                  );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout_rounded, color: AppColors.textMuted),
+                icon: Icon(Icons.logout_rounded, color: AppColors.of(context).textMuted),
                 onPressed: () => _handleLogout(context),
               ),
               const SizedBox(width: 8),
