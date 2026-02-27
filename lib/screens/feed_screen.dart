@@ -30,12 +30,8 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadPosts() async {
-    try {
-      await _store.loadPostsFromLocal();
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
+    await _store.loadPostsFromLocal();
+    setState(() => _isLoading = false);
   }
 
   Future<void> _refresh() async {
@@ -55,7 +51,10 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
           children: [
             // Header
             Container(
-              decoration: BoxDecoration(color: AppColors.of(context).scaffoldBg, border: Border(bottom: BorderSide(color: AppColors.of(context).divider))),
+              decoration: BoxDecoration(
+                color: AppColors.of(context).scaffoldBg,
+                border: Border(bottom: BorderSide(color: AppColors.of(context).divider)),
+              ),
               child: Column(
                 children: [
                   Padding(
@@ -68,7 +67,8 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
                           child: Icon(Icons.water_drop_rounded, color: AppColors.of(context).teal, size: 20),
                         ),
                         const SizedBox(width: 12),
-                        Text('Flood Reports', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary, letterSpacing: -0.5)),
+                        Text('Flood Reports',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary, letterSpacing: -0.5)),
                         const Spacer(),
                         Icon(Icons.tune_rounded, color: AppColors.of(context).textMuted, size: 22),
                       ],
@@ -80,8 +80,8 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
                     indicatorWeight: 2.5,
                     labelColor: AppColors.of(context).textPrimary,
                     unselectedLabelColor: AppColors.of(context).textMuted,
-                    labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                    unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
                     tabs: const [Tab(text: 'For You'), Tab(text: 'Alerts 🚨')],
                   ),
                 ],
@@ -119,7 +119,6 @@ class _FeedScreenState extends State<FeedScreen> with SingleTickerProviderStateM
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => _NewPostSheet(onPost: (post) {
         setState(() => _store.posts.insert(0, post));
-        // Award points for submitting a report
         _store.addPoints(_store.currentUser, 50, 'Submitted a flood report', relatedPostId: post.id);
       }),
     );
@@ -156,7 +155,6 @@ class _PostList extends StatelessWidget {
   }
 }
 
-// ─── New Post Bottom Sheet ─────────────────────────────────────────────────────
 class _NewPostSheet extends StatefulWidget {
   final void Function(Post) onPost;
   const _NewPostSheet({required this.onPost});
@@ -168,11 +166,9 @@ class _NewPostSheetState extends State<_NewPostSheet> {
   final _controller = TextEditingController();
   String _severity = 'Low';
 
-
-
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> severities = [
+    final severities = [
       {'label': 'Clear', 'color': AppColors.of(context).teal},
       {'label': 'Low', 'color': Colors.blue},
       {'label': 'Medium', 'color': Colors.orange},
@@ -214,6 +210,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
           Row(
             children: severities.map((s) {
               final isSelected = _severity == s['label'];
+              final color = s['color'] as Color;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
@@ -222,11 +219,12 @@ class _NewPostSheetState extends State<_NewPostSheet> {
                     duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: isSelected ? (s['color'] as Color).withValues(alpha: 0.12) : AppColors.of(context).divider,
+                      color: isSelected ? color.withValues(alpha: 0.12) : AppColors.of(context).divider,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: isSelected ? (s['color'] as Color) : Colors.transparent, width: 1.5),
+                      border: Border.all(color: isSelected ? color : Colors.transparent, width: 1.5),
                     ),
-                    child: Text(s['label'] as String, style: TextStyle(color: isSelected ? (s['color'] as Color) : Colors.grey, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, fontSize: 13)),
+                    child: Text(s['label'] as String,
+                        style: TextStyle(color: isSelected ? color : Colors.grey, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, fontSize: 13)),
                   ),
                 ),
               );
