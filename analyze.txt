@@ -1,13 +1,84 @@
-﻿Analyzing admin_feed_screen.dart...
+﻿Resolving dependencies...
+Downloading packages...
+  async 2.11.0 (2.13.0 available)
+  boolean_selector 2.1.1 (2.1.2 available)
+  characters 1.4.0 (1.4.1 available)
+  cross_file 0.3.4+2 (0.3.5+2 available)
+  csv 6.0.0 (7.1.0 available)
+  ffi 2.1.3 (2.2.0 available)
+  file_selector_linux 0.9.3+2 (0.9.4 available)
+  file_selector_macos 0.9.4+3 (0.9.5 available)
+  file_selector_platform_interface 2.6.2 (2.7.0 available)
+  file_selector_windows 0.9.3+4 (0.9.3+5 available)
+  fl_chart 0.70.2 (1.1.1 available)
+  flutter_lints 5.0.0 (6.0.0 available)
+  flutter_plugin_android_lifecycle 2.0.29 (2.0.33 available)
+! geolocator_android 4.6.2 (overridden) (5.0.2 available)
+  google_maps_flutter 2.12.3 (2.14.2 available)
+  google_maps_flutter_android 2.18.1 (2.19.1 available)
+  google_maps_flutter_ios 2.15.5 (2.17.5 available)
+  google_maps_flutter_platform_interface 2.13.0 (2.14.2 available)
+  google_maps_flutter_web 0.5.12+2 (0.6.1 available)
+  image_picker 1.2.0 (1.2.1 available)
+  image_picker_android 0.8.13 (0.8.13+14 available)
+  image_picker_for_web 3.1.0 (3.1.1 available)
+  image_picker_ios 0.8.13 (0.8.13+6 available)
+  image_picker_macos 0.2.2 (0.2.2+1 available)
+  image_picker_platform_interface 2.11.0 (2.11.1 available)
+  lints 5.1.1 (6.1.0 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  meta 1.16.0 (1.18.1 available)
+  path_provider_foundation 2.5.1 (2.6.0 available)
+  petitparser 6.0.2 (7.0.2 available)
+  shared_preferences_android 2.4.20 (2.4.21 available)
+  source_span 1.10.0 (1.10.2 available)
+  string_scanner 1.3.0 (1.4.1 available)
+  term_glyph 1.2.1 (1.2.2 available)
+  test_api 0.7.6 (0.7.9 available)
+  uuid 4.5.2 (4.5.3 available)
+  vm_service 14.3.0 (15.0.2 available)
+  win32 5.10.1 (6.0.0 available)
+  xml 6.5.0 (6.6.1 available)
+Got dependencies!
+40 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing hydrovision_app...                                    
 
-  error - admin_feed_screen.dart:172:9 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
-  error - admin_feed_screen.dart:172:10 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
-  error - admin_feed_screen.dart:173:7 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
-  error - admin_feed_screen.dart:173:8 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
-  error - admin_feed_screen.dart:174:5 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
-  error - admin_feed_screen.dart:174:6 - Unexpected text ';'. Try removing the text. - unexpected_token
-  error - admin_feed_screen.dart:175:3 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
-  error - admin_feed_screen.dart:176:1 - Expected a method, getter, setter or operator declaration. This appears to be incomplete code. Try removing it or completing it. - expected_executable
-warning - admin_feed_screen.dart:2:8 - Unused import: 'package:cloud_firestore/cloud_firestore.dart'. Try removing the import directive. - unused_import
+  error - Invalid constant value - lib\screens\profile_screen.dart:75:63 - invalid_constant
+  error - Instance member 'textMuted' can't be accessed using static access - lib\screens\profile_screen.dart:75:73 - static_access_to_instance_member
+  error - Expected an identifier - lib\services\database_service.dart:93:1 - missing_identifier
+  error - Expected an identifier - lib\services\database_service.dart:93:4 - missing_identifier
+  error - Expected an identifier - lib\services\database_service.dart:93:7 - missing_identifier
+  error - Expected to find ';' - lib\services\database_service.dart:93:9 - expected_token
+  error - The method 'bab052' isn't defined for the type 'DatabaseService' - lib\services\database_service.dart:93:10 - undefined_method
+  error - Undefined name 'V7' - lib\services\database_service.dart:93:18 - undefined_identifier
+  error - Expected an identifier - lib\services\database_service.dart:93:20 - missing_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:20 - expected_token
+  error - Undefined name 'Uploaded' - lib\services\database_service.dart:93:24 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:33 - expected_token
+  error - Undefined name 'data' - lib\services\database_service.dart:93:33 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:38 - expected_token
+  error - Undefined name 'to' - lib\services\database_service.dart:93:38 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:41 - expected_token
+  error - Undefined name 'only' - lib\services\database_service.dart:93:41 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:46 - expected_token
+  error - Undefined name 'use' - lib\services\database_service.dart:93:46 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:50 - expected_token
+  error - Undefined name 'Firebase' - lib\services\database_service.dart:93:50 - undefined_identifier
+  error - The name 'the' isn't a type, so it can't be used in an 'as' expression - lib\services\database_service.dart:93:62 - cast_to_non_type
+  error - Expected to find ',' - lib\services\database_service.dart:93:66 - expected_token
+  error - Undefined name 'feed' - lib\services\database_service.dart:93:66 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:71 - expected_token
+  error - Undefined name 'and' - lib\services\database_service.dart:93:71 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:75 - expected_token
+  error - Undefined name 'properly' - lib\services\database_service.dart:93:75 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:84 - expected_token
+  error - Undefined name 'set' - lib\services\database_service.dart:93:84 - undefined_identifier
+  error - Expected to find ',' - lib\services\database_service.dart:93:88 - expected_token
+  error - Undefined name 'database' - lib\services\database_service.dart:93:88 - undefined_identifier
+  error - Expected to find ';' - lib\services\database_service.dart:93:96 - expected_token
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\widgets\admin_post_card.dart:149:31 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\widgets\admin_post_card.dart:206:35 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\widgets\admin_post_card.dart:279:35 - use_build_context_synchronously
 
-9 issues found.

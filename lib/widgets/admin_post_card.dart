@@ -687,26 +687,37 @@ class _AdminPostCardState extends State<AdminPostCard> {
                               ConstrainedBox(
                                 constraints: const BoxConstraints(
                                     maxHeight: 400, minWidth: double.infinity),
-                                child: Image.network(
-                                  post.imageUrl,
-                                  fit: BoxFit.contain,
-                                  width: double.infinity,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    height: 180,
-                                    color: Colors.grey.shade200,
-                                    child: Icon(Icons.broken_image_outlined,
-                                        color: Colors.grey.shade400, size: 48)),
-                                  loadingBuilder: (_, child, progress) {
-                                    if (progress == null) return child;
-                                    return Container(
-                                      height: 180,
-                                      color: Colors.grey.shade100,
-                                      child: Center(
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: AppColors.of(context).teal)));
-                                  },
-                                ),
+                                child: post.imageUrl.startsWith('assets/')
+                                    ? Image.asset(
+                                        post.imageUrl,
+                                        fit: BoxFit.contain,
+                                        width: double.infinity,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          height: 180,
+                                          color: Colors.grey.shade200,
+                                          child: Icon(Icons.broken_image_outlined,
+                                              color: Colors.grey.shade400, size: 48)),
+                                      )
+                                    : Image.network(
+                                        post.imageUrl,
+                                        fit: BoxFit.contain,
+                                        width: double.infinity,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          height: 180,
+                                          color: Colors.grey.shade200,
+                                          child: Icon(Icons.broken_image_outlined,
+                                              color: Colors.grey.shade400, size: 48)),
+                                        loadingBuilder: (_, child, progress) {
+                                          if (progress == null) return child;
+                                          return Container(
+                                            height: 180,
+                                            color: Colors.grey.shade100,
+                                            child: Center(
+                                                child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: AppColors.of(context).teal)));
+                                        },
+                                      ),
                               ),
                               Positioned(
                                 top: 10,
