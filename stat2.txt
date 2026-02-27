@@ -1,0 +1,10 @@
+﻿commit f16820444d723b627c81877492758fb3edceead3
+Author: Syed Azhar <syedazhar3401@gmail.com>
+Date:   Fri Feb 27 03:39:14 2026 +0800
+
+    V7.3: Fixed Admin Side, now corresponds to Firebase
+
+ lib/models/admin_store.dart        |  48 ++++---
+ lib/screens/admin_feed_screen.dart | 269 ++++++++++++++++++++-----------------
+ lib/widgets/admin_post_card.dart   | 126 +++++++++--------
+ 3 files changed, 247 insertions(+), 196 deletions(-)
