@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
+import '../services/database_service.dart';
 import '../widgets/admin_post_card.dart';
 import '../theme/app_theme.dart';
-import '../services/database_service.dart';
 
-/// The admin's version of the feed — powered by Firebase Firestore.
+/// The admin's version of the feed — live from Firestore with admin filter tabs.
 class AdminFeedScreen extends StatefulWidget {
   const AdminFeedScreen({super.key});
 
@@ -37,67 +37,59 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
           stream: DatabaseService().getFeedPostsStream(),
           builder: (context, snapshot) {
             final allPosts = snapshot.data ?? [];
-            final pendingPosts =
-                allPosts.where((p) => p.status == PostStatus.pending).toList();
-            final alertPosts = allPosts
-                .where((p) =>
-                    p.effectiveSeverity.toLowerCase() == 'danger')
-                .toList();
+            final pendingPosts = allPosts.where((p) => p.status == PostStatus.pending).toList();
+            final alertPosts = allPosts.where((p) => p.effectiveSeverity.toLowerCase() == 'danger' || p.effectiveSeverity.toLowerCase() == 'high').toList();
 
             return Column(
               children: [
-                // ── Header ────────────────────────────────────────────
+                // ── Header ────────────────────────────────────
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade200)),
+                    border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
                   ),
                   child: Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E3A3A)
-                                    .withValues(alpha: 0.1),
+                                color: const Color(0xFF1E3A3A).withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(
-                                  Icons.admin_panel_settings_rounded,
-                                  color: const Color(0xFF1E3A3A),
-                                  size: 20),
+                              child: const Icon(Icons.admin_panel_settings_rounded,
+                                  color: Color(0xFF1E3A3A), size: 20),
                             ),
                             const SizedBox(width: 12),
-                            Text('Admin Feed',
-                                style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                    letterSpacing: -0.5)),
-                            const Spacer(),
-                            // Live pending count badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color:
-                                    Colors.orange.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${pendingPosts.length} Pending',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.orange.shade700,
-                                ),
+                            Text(
+                              'Admin Feed',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.of(context).textPrimary,
+                                letterSpacing: -0.5,
                               ),
                             ),
+                            const Spacer(),
+                            if (pendingPosts.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${pendingPosts.length} Pending',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.orange.shade700,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -105,12 +97,10 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
                         controller: _tabController,
                         indicatorColor: const Color(0xFF1E3A3A),
                         indicatorWeight: 2.5,
-                        labelColor: AppColors.textPrimary,
-                        unselectedLabelColor: AppColors.textMuted,
-                        labelStyle: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14),
-                        unselectedLabelStyle: const TextStyle(
-                            fontWeight: FontWeight.w500, fontSize: 14),
+                        labelColor: AppColors.of(context).textPrimary,
+                        unselectedLabelColor: AppColors.of(context).textMuted,
+                        labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
                         tabs: const [
                           Tab(text: 'All Reports'),
                           Tab(text: 'Pending'),
@@ -121,12 +111,10 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
                   ),
                 ),
 
-                // ── Content ───────────────────────────────────────────
+                // ── Tab Content ───────────────────────────────
                 Expanded(
                   child: snapshot.connectionState == ConnectionState.waiting
-                      ? Center(
-                          child: CircularProgressIndicator(
-                              color: const Color(0xFF1E3A3A), strokeWidth: 2))
+                      ? Center(child: CircularProgressIndicator(color: const Color(0xFF1E3A3A), strokeWidth: 2))
                       : snapshot.hasError
                           ? _ErrorView(error: snapshot.error.toString())
                           : TabBarView(
@@ -148,7 +136,6 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
 }
 
 // ─── Post list ───────────────────────────────────────────────────────────────
-
 class _AdminPostList extends StatelessWidget {
   final List<Post> posts;
   const _AdminPostList({required this.posts});
@@ -158,11 +145,11 @@ class _AdminPostList extends StatelessWidget {
     if (posts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.inbox_rounded, size: 52, color: AppColors.textMuted),
+          Icon(Icons.inbox_rounded, size: 52, color: AppColors.of(context).textMuted),
           const SizedBox(height: 12),
           Text('No reports',
               style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: AppColors.of(context).textSecondary,
                   fontWeight: FontWeight.w600,
                   fontSize: 16)),
         ]),
@@ -171,8 +158,9 @@ class _AdminPostList extends StatelessWidget {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 650),
+        constraints: const BoxConstraints(maxWidth: 680),
         child: ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 10),
           itemCount: posts.length,
           itemBuilder: (_, i) => AdminPostCard(post: posts[i]),
         ),

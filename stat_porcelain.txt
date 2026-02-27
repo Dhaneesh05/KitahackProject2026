@@ -1,0 +1,13 @@
+﻿M  lib/models/post.dart
+M  lib/models/post_store.dart
+UU lib/screens/feed_screen.dart
+UU lib/screens/home_screen.dart
+M  lib/screens/profile_screen.dart
+A  lib/screens/upload_mock_data_screen.dart
+UU lib/services/database_service.dart
+UU lib/widgets/post_card.dart
+M  web/index.html
+?? stat1.txt
+?? stat2.txt
+?? stat3.txt
+?? stat_porcelain.txt

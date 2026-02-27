@@ -64,14 +64,22 @@ class DatabaseService {
         reportData['location'] = GeoPoint(lat, lng);
       }
 
+      debugPrint('FIREBASE: Attempting to add report data: $reportData');
       final docRef = await _firestore.collection('reports').add(reportData);
+      debugPrint('FIREBASE: Successfully added report with ID: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('Database Error: $e');
+      debugPrint('FIREBASE ERROR: Database Error during submit: $e');
       rethrow;
     }
   }
 
+  Stream<QuerySnapshot> getActiveReports() {
+    return _firestore
+        .collection('reports')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
   // ─── Admin Operations ─────────────────────────────────────────────────────
 
   /// Updates a specific field on a post document.

@@ -3,7 +3,7 @@ import 'package:csv/csv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'post.dart';
 
-const _csvStorageKey = 'hydrovision_posts_csv';
+const _csvStorageKey = 'hydrovision_posts_csv_v2';
 const _csvHeader = 'id,authorName,authorHandle,content,imageUrl,timestamp,likes,comments,reposts,floodSeverity,userVerifications,adminVerified,aiVerified,repostedBy,status,currentSeverity,isDeleted';
 
 /// A point transaction entry
@@ -112,21 +112,10 @@ class PostStore {
 
   // ─── CSV Persistence ──────────────────────────────────────────────────────
 
-  /// Loads posts from local storage (shared_preferences).
-  /// Falls back to the bundled CSV asset on first run.
+  /// Always loads posts from the bundled CSV asset so that any changes to
+  /// assets/data/posts.csv are picked up immediately on hot restart.
   Future<List<Post>> loadPostsFromLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedCsv = prefs.getString(_csvStorageKey);
-
-    String csvData;
-    if (savedCsv != null && savedCsv.isNotEmpty) {
-      // Use locally persisted data
-      csvData = savedCsv;
-    } else {
-      // First run — load from bundled asset
-      csvData = await rootBundle.loadString('assets/data/posts.csv');
-    }
-
+    final csvData = await rootBundle.loadString('assets/data/posts_v3.csv');
     final rows = const CsvToListConverter(eol: '\n').convert(csvData);
     final loaded = rows.skip(1).where((r) => r.length >= 10).map((r) => Post.fromCsvRow(r)).toList();
     posts = loaded;
