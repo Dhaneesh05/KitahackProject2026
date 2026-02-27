@@ -32,16 +32,16 @@ class _FeedScreenState extends State<FeedScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [
             // ── Header ──────────────────────────────────────────────
             Container(
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade200))),
+                color: AppColors.of(context).scaffoldBg,
+                border: Border(bottom: BorderSide(color: AppColors.of(context).divider)),
+              ),
               child: Column(
                 children: [
                   Padding(
@@ -51,35 +51,25 @@ class _FeedScreenState extends State<FeedScreen>
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              color: AppColors.tealLight,
-                              shape: BoxShape.circle),
-                          child: Icon(Icons.water_drop_rounded,
-                              color: AppColors.teal, size: 20),
+                          decoration: BoxDecoration(color: AppColors.of(context).tealLight, shape: BoxShape.circle),
+                          child: Icon(Icons.water_drop_rounded, color: AppColors.of(context).teal, size: 20),
                         ),
                         const SizedBox(width: 12),
                         Text('Flood Reports',
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.5)),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary, letterSpacing: -0.5)),
                         const Spacer(),
-                        Icon(Icons.tune_rounded,
-                            color: AppColors.textMuted, size: 22),
+                        Icon(Icons.tune_rounded, color: AppColors.of(context).textMuted, size: 22),
                       ],
                     ),
                   ),
                   TabBar(
                     controller: _tabController,
-                    indicatorColor: AppColors.teal,
+                    indicatorColor: AppColors.of(context).teal,
                     indicatorWeight: 2.5,
-                    labelColor: AppColors.textPrimary,
-                    unselectedLabelColor: AppColors.textMuted,
-                    labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 15),
-                    unselectedLabelStyle: const TextStyle(
-                        fontWeight: FontWeight.w500, fontSize: 15),
+                    labelColor: AppColors.of(context).textPrimary,
+                    unselectedLabelColor: AppColors.of(context).textMuted,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
                     tabs: const [Tab(text: 'For You'), Tab(text: 'Alerts 🚨')],
                   ),
                 ],
@@ -92,9 +82,7 @@ class _FeedScreenState extends State<FeedScreen>
                 stream: DatabaseService().getFeedPostsStream(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.teal, strokeWidth: 2));
+                    return Center(child: CircularProgressIndicator(color: AppColors.of(context).teal, strokeWidth: 2));
                   }
 
                   if (snapshot.hasError) {
@@ -104,19 +92,12 @@ class _FeedScreenState extends State<FeedScreen>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.cloud_off_rounded,
-                                size: 52, color: AppColors.textMuted),
+                            Icon(Icons.cloud_off_rounded, size: 52, color: AppColors.of(context).textMuted),
                             const SizedBox(height: 12),
                             Text('Could not load posts',
-                                style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16)),
+                                style: TextStyle(color: AppColors.of(context).textSecondary, fontWeight: FontWeight.w600, fontSize: 16)),
                             const SizedBox(height: 6),
-                            Text('${snapshot.error}',
-                                style: TextStyle(
-                                    color: AppColors.textMuted, fontSize: 12),
-                                textAlign: TextAlign.center),
+                            Text('${snapshot.error}', style: TextStyle(color: AppColors.of(context).textMuted, fontSize: 12), textAlign: TextAlign.center),
                           ],
                         ),
                       ),
@@ -124,10 +105,7 @@ class _FeedScreenState extends State<FeedScreen>
                   }
 
                   final allPosts = snapshot.data ?? [];
-                  final alertPosts = allPosts
-                      .where((p) =>
-                          p.effectiveSeverity.toLowerCase() == 'danger')
-                      .toList();
+                  final alertPosts = allPosts.where((p) => p.effectiveSeverity.toLowerCase() == 'danger').toList();
 
                   return TabBarView(
                     controller: _tabController,
@@ -144,10 +122,10 @@ class _FeedScreenState extends State<FeedScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showPostDialog(context),
-        backgroundColor: AppColors.teal,
+        backgroundColor: AppColors.of(context).teal,
         elevation: 4,
         shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
+        child: Icon(Icons.add, color: AppColors.of(context).scaffoldBg, size: 28),
       ),
     );
   }
@@ -156,17 +134,11 @@ class _FeedScreenState extends State<FeedScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.of(context).scaffoldBg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => _NewPostSheet(onPost: (post) {
-        // Award points for submitting a report (in-memory)
-        _store.addPoints(
-          _store.currentUser,
-          50,
-          'Submitted a flood report',
-          relatedPostId: post.id,
-        );
+        // Points awarded on submission
+        _store.addPoints(_store.currentUser, 50, 'Submitted a flood report', relatedPostId: post.id);
       }),
     );
   }
@@ -182,24 +154,21 @@ class _PostList extends StatelessWidget {
     if (posts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.water_drop_outlined, size: 52, color: AppColors.textMuted),
+          Icon(Icons.water_drop_outlined, size: 52, color: AppColors.of(context).textMuted),
           const SizedBox(height: 12),
-          Text('No reports yet',
-              style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16)),
+          Text('No reports yet', style: TextStyle(color: AppColors.of(context).textSecondary, fontWeight: FontWeight.w600, fontSize: 16)),
           const SizedBox(height: 6),
-          Text('Be the first to report a flood!',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          Text('Be the first to report a flood!', style: TextStyle(color: AppColors.of(context).textMuted, fontSize: 13)),
         ]),
       );
     }
+
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 650),
         child: ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 10),
           itemCount: posts.length,
           itemBuilder: (_, i) => PostCard(post: posts[i]),
         ),
@@ -208,7 +177,6 @@ class _PostList extends StatelessWidget {
   }
 }
 
-// ─── New Post Bottom Sheet ─────────────────────────────────────────────────────
 class _NewPostSheet extends StatefulWidget {
   final void Function(Post) onPost;
   const _NewPostSheet({required this.onPost});
@@ -221,13 +189,6 @@ class _NewPostSheetState extends State<_NewPostSheet> {
   String _severity = 'Low';
   bool _isSubmitting = false;
 
-  final List<Map<String, dynamic>> _severities = [
-    {'label': 'Clear', 'color': AppColors.teal},
-    {'label': 'Low', 'color': Colors.blue},
-    {'label': 'Medium', 'color': Colors.orange},
-    {'label': 'Danger', 'color': Colors.red},
-  ];
-
   @override
   void dispose() {
     _controller.dispose();
@@ -236,6 +197,12 @@ class _NewPostSheetState extends State<_NewPostSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final severities = [
+      {'label': 'Clear', 'color': AppColors.of(context).teal},
+      {'label': 'Low', 'color': Colors.blue},
+      {'label': 'Medium', 'color': Colors.orange},
+      {'label': 'Danger', 'color': Colors.red},
+    ];
     return Padding(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom + 16,
@@ -248,10 +215,7 @@ class _NewPostSheetState extends State<_NewPostSheet> {
         children: [
           Row(
             children: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel',
-                      style: TextStyle(color: Colors.grey))),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: TextStyle(color: AppColors.of(context).textMuted))),
               const Spacer(),
               const Text('New Report',
                   style:
@@ -260,20 +224,14 @@ class _NewPostSheetState extends State<_NewPostSheet> {
               ElevatedButton(
                 onPressed: _isSubmitting ? null : _submitPost,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.teal,
+                    backgroundColor: AppColors.of(context).teal,
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     elevation: 0),
                 child: _isSubmitting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('Post',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Post', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -283,23 +241,18 @@ class _NewPostSheetState extends State<_NewPostSheet> {
             autofocus: true,
             decoration: InputDecoration(
               hintText: "What's happening with floods near you?",
-              hintStyle:
-                  TextStyle(color: Colors.grey.shade400, fontSize: 16),
+              hintStyle: TextStyle(color: AppColors.of(context).textMuted, fontSize: 16),
               border: InputBorder.none,
             ),
-            style:
-                const TextStyle(fontSize: 16, color: Color(0xFF0F1419)),
+            style: TextStyle(fontSize: 16, color: AppColors.of(context).textPrimary),
           ),
           const SizedBox(height: 8),
-          const Text('Flood Level',
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: Colors.grey)),
+          Text('Flood Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.of(context).textMuted)),
           const SizedBox(height: 8),
           Row(
-            children: _severities.map((s) {
+            children: severities.map((s) {
               final isSelected = _severity == s['label'];
+              final color = s['color'] as Color;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
@@ -310,38 +263,19 @@ class _NewPostSheetState extends State<_NewPostSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? (s['color'] as Color).withValues(alpha: 0.12)
-                          : Colors.grey.shade100,
+                      color: isSelected ? color.withValues(alpha: 0.12) : AppColors.of(context).divider,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: isSelected
-                              ? (s['color'] as Color)
-                              : Colors.transparent,
-                          width: 1.5),
+                      border: Border.all(color: isSelected ? color : Colors.transparent, width: 1.5),
                     ),
-                    child: Text(
-                      s['label'] as String,
-                      style: TextStyle(
-                          color: isSelected
-                              ? (s['color'] as Color)
-                              : Colors.grey,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          fontSize: 13),
-                    ),
+                    child: Text(s['label'] as String,
+                        style: TextStyle(color: isSelected ? color : Colors.grey, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, fontSize: 13)),
                   ),
                 ),
               );
             }).toList(),
           ),
           const SizedBox(height: 16),
-          Row(children: [
-            Icon(Icons.image_outlined, color: AppColors.teal),
-            const SizedBox(width: 16),
-            Icon(Icons.location_on_outlined, color: AppColors.teal)
-          ]),
+          Row(children: [Icon(Icons.image_outlined, color: AppColors.of(context).teal), const SizedBox(width: 16), Icon(Icons.location_on_outlined, color: AppColors.of(context).teal)]),
           const SizedBox(height: 8),
         ],
       ),

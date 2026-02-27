@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/post_store.dart';
-import '../models/post.dart';
+
 import '../theme/app_theme.dart';
 
 class RewardsScreen extends StatefulWidget {
@@ -63,23 +63,23 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.of(context).scaffoldBg,
       body: SafeArea(
         child: Column(
           children: [
             // Header
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              color: Colors.white,
+              color: AppColors.of(context).scaffoldBg,
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.teal, Colors.blue.shade700], begin: Alignment.topLeft, end: Alignment.bottomRight), shape: BoxShape.circle),
-                    child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 20),
+                    decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.of(context).teal, Colors.blue.shade700], begin: Alignment.topLeft, end: Alignment.bottomRight), shape: BoxShape.circle),
+                    child: Icon(Icons.emoji_events_rounded, color: AppColors.of(context).scaffoldBg, size: 20),
                   ),
                   const SizedBox(width: 12),
-                  Text('Rewards Centre', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5)),
+                  Text('Rewards Centre', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary, letterSpacing: -0.5)),
                 ],
               ),
             ),
@@ -110,9 +110,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [const Color(0xFF006D5B), AppColors.teal, Colors.blue.shade700], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: LinearGradient(colors: [const Color(0xFF006D5B), AppColors.of(context).teal, Colors.blue.shade700], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppColors.teal.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: AppColors.of(context).teal.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +126,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                   children: [
                     Icon(_rankIcon, color: _rankColor, size: 16),
                     const SizedBox(width: 6),
-                    Text(_rank, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                    Text(_rank, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
                   ],
                 ),
               ),
@@ -137,7 +137,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             animation: _countAnim,
             builder: (_, __) {
               final displayedPoints = (_countAnim.value * _points).round();
-              return Text('$displayedPoints', style: const TextStyle(color: Colors.white, fontSize: 52, fontWeight: FontWeight.w900, letterSpacing: -2));
+              return Text('$displayedPoints', style: TextStyle(color: Colors.white, fontSize: 52, fontWeight: FontWeight.w900, letterSpacing: -2));
             },
           ),
           Row(
@@ -145,7 +145,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-                child: const Text('HydroCoins', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                child: Text('HydroCoins', style: TextStyle(color: AppColors.of(context).scaffoldBg, fontSize: 12, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -158,7 +158,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Progress to next rank', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13)),
-                  Text('$lifetime / $_threshold pts', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                  Text('$lifetime / $_threshold pts', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -168,7 +168,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
                   animation: _countAnim,
                   builder: (_, __) => LinearProgressIndicator(
                     value: progress * _countAnim.value,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    backgroundColor: AppColors.of(context).scaffoldBg.withValues(alpha: 0.2),
                     valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                     minHeight: 8,
                   ),
@@ -184,15 +184,15 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
   Widget _buildHowToEarnCard() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(color: AppColors.of(context).scaffoldBg, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.of(context).shadow, blurRadius: 10, offset: const Offset(0, 4))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('How to Earn HydroCoins', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          Text('How to Earn HydroCoins', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary)),
           const SizedBox(height: 12),
           _earnRow(Icons.add_photo_alternate_rounded, Colors.blue, 'Submit a flood report', '+50 pts'),
           _earnRow(Icons.verified_user_rounded, Colors.green, 'Verify someone\'s report', '+10 pts'),
-          _earnRow(Icons.where_to_vote_rounded, AppColors.teal, 'Your report gets verified', '+10 pts each'),
+          _earnRow(Icons.where_to_vote_rounded, AppColors.of(context).teal, 'Your report gets verified', '+10 pts each'),
           _earnRow(Icons.star_rounded, Colors.orange, 'First report of the day', '+25 bonus pts'),
         ],
       ),
@@ -210,7 +210,7 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
             child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: AppColors.textSecondary))),
+          Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: AppColors.of(context).textSecondary))),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
@@ -225,9 +225,9 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Redeem Rewards', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        Text('Redeem Rewards', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary)),
         const SizedBox(height: 4),
-        Text('Government & community incentives', style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
+        Text('Government & community incentives', style: TextStyle(fontSize: 14, color: AppColors.of(context).textMuted)),
         const SizedBox(height: 12),
         SizedBox(
           height: 180,
@@ -260,10 +260,10 @@ class _RewardsScreenState extends State<RewardsScreen> with SingleTickerProvider
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Points History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+        Text('Points History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary)),
         const SizedBox(height: 12),
         if (history.isEmpty)
-          Center(child: Text('No activity yet. Start reporting!', style: TextStyle(color: AppColors.textMuted))),
+          Center(child: Text('No activity yet. Start reporting!', style: TextStyle(color: AppColors.of(context).textMuted))),
         ...history.map((tx) => _ActivityRow(transaction: tx)),
       ],
     );
@@ -287,9 +287,9 @@ class _RewardCard extends StatelessWidget {
       width: 160,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.of(context).scaffoldBg,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.07), blurRadius: 8, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.of(context).shadow, blurRadius: 8, offset: const Offset(0, 4))],
         border: canAfford ? Border.all(color: color.withValues(alpha: 0.4), width: 1.5) : null,
       ),
       child: Column(
@@ -301,13 +301,13 @@ class _RewardCard extends StatelessWidget {
             child: Icon(reward['icon'] as IconData, color: color, size: 24),
           ),
           const SizedBox(height: 10),
-          Text(reward['name'] as String, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0F1419)), maxLines: 2, overflow: TextOverflow.ellipsis),
+          Text(reward['name'] as String, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.of(context).textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
           const Spacer(),
           Row(
             children: [
-              Icon(Icons.toll_rounded, size: 14, color: canAfford ? AppColors.teal : Colors.grey),
+              Icon(Icons.toll_rounded, size: 14, color: canAfford ? AppColors.of(context).teal : Colors.grey),
               const SizedBox(width: 3),
-              Text('$cost', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: canAfford ? AppColors.teal : Colors.grey)),
+              Text('$cost', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: canAfford ? AppColors.of(context).teal : Colors.grey)),
             ],
           ),
           const SizedBox(height: 6),
@@ -316,14 +316,14 @@ class _RewardCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: canAfford ? onRedeem : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: canAfford ? color : Colors.grey.shade200,
-                foregroundColor: canAfford ? Colors.white : Colors.grey.shade500,
+                backgroundColor: canAfford ? color : AppColors.of(context).divider,
+                foregroundColor: canAfford ? Colors.white : AppColors.of(context).textMuted,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 elevation: 0,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: Text(canAfford ? 'Redeem' : 'Locked', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              child: Text(canAfford ? 'Redeem' : 'Locked', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -348,9 +348,9 @@ class _ActivityRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.of(context).scaffoldBg,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: AppColors.of(context).shadow, blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
@@ -364,8 +364,8 @@ class _ActivityRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(transaction.reason, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0F1419))),
-                Text(timeLabel, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                Text(transaction.reason, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.of(context).textPrimary)),
+                Text(timeLabel, style: TextStyle(fontSize: 12, color: AppColors.of(context).textMuted)),
               ],
             ),
           ),

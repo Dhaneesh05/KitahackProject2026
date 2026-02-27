@@ -1,0 +1,20 @@
+id,authorName,authorHandle,content,imageUrl,timestamp,likes,comments,reposts,floodSeverity,userVerifications,adminVerified,aiVerified,repostedBy
+<<<<<<< HEAD:assets/data/posts_v3.csv
+1,Ahmad Razif,@ahmadrazif,Jalan Ampang completely submerged. Water is waist-deep near the entrance. Residents are evacuating. #FloodAlert #KL,https://images.unsplash.com/photo-1547683905-f686c993aae5?w=600&fit=crop,2h ago,142,38,67,Danger,3,true,true,
+2,Nurul Izzah,@nurulizzah_kl,Slight flooding at Taman Desa roundabout. Water level rising slowly. Avoid if possible.,https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=600&fit=crop,3h ago,89,21,34,Low,2,false,true,
+3,Haziq Farouk,@haziqfarouk,UPDATE: Sungai Klang overflow reported near Chow Kit area. DBKL on site. Stay safe everyone 🙏,https://images.unsplash.com/photo-1605374461530-00adbf0e8eb8?w=600&fit=crop,4h ago,203,52,110,Medium,1,true,false,
+4,Sarah Lim,@sarahlim,Clear roads along DUKE highway this morning. Checked earlier no flooding. Stay safe!,https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=600&fit=crop,5h ago,56,9,22,Clear,3,true,true,
+5,Reza Amsyar,@rezaamsyar,EMERGENCY: Flat in Setapak ground floor flooded. Residents need help evacuating. Calling for volunteers! 🚨,https://images.unsplash.com/photo-1616423640778-28d1b53229bd?w=600&fit=crop,6h ago,387,94,201,Danger,3,true,true,
+6,Priya Nair,@priyanair_my,Water starting to accumulate at Jalan Ipoh near the bus station. Looks like 10-15cm. #JalanIpoh,https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=600&fit=crop,8h ago,73,18,29,Low,0,false,false,
+7,You,@you,First post from me! Mild flooding near my area in Bangsar. Urging others to be careful. Stay safe 🌊,https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=600&fit=crop,10h ago,18,3,5,Medium,0,false,false,
+8,Wong Kah Fai,@wongkahfai,All clear at Subang Jaya SS15. Roads dry no issues. Hope everyone stays safe today! ☀️,https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=600&fit=crop,12h ago,45,7,18,Clear,3,true,true,
+=======
+1,Ahmad Razif,@ahmadrazif,Jalan Ampang completely submerged. Water is waist-deep near the entrance. Residents are evacuating. #FloodAlert #KL,assets/images/flood1.jpeg,2h ago,142,38,67,Danger,3,true,true,
+2,Nurul Izzah,@nurulizzah_kl,Slight flooding at Taman Desa roundabout. Water level rising slowly. Avoid if possible.,assets/images/flood2.jpg,3h ago,89,21,34,Low,2,false,true,
+3,Haziq Farouk,@haziqfarouk,UPDATE: Sungai Klang overflow reported near Chow Kit area. DBKL on site. Stay safe everyone 🙏,assets/images/flood3.jpg,4h ago,203,52,110,Medium,1,true,false,
+4,Sarah Lim,@sarahlim,Clear roads along DUKE highway this morning. Checked earlier no flooding. Stay safe!,assets/images/flood4.jpg,5h ago,56,9,22,Clear,3,true,true,
+5,Reza Amsyar,@rezaamsyar,EMERGENCY: Flat in Setapak ground floor flooded. Residents need help evacuating. Calling for volunteers! 🚨,assets/images/flood5.jpg,6h ago,387,94,201,Danger,3,true,true,
+6,Priya Nair,@priyanair_my,Water starting to accumulate at Jalan Ipoh near the bus station. Looks like 10-15cm. #JalanIpoh,assets/images/flood6.jpg,8h ago,73,18,29,Low,0,false,false,
+7,You,@you,First post from me! Mild flooding near my area in Bangsar. Urging others to be careful. Stay safe 🌊,assets/images/flood7.jpg,10h ago,18,3,5,Medium,0,false,false,
+8,Wong Kah Fai,@wongkahfai,All clear at Subang Jaya SS15. Roads dry no issues. Hope everyone stays safe today! ☀️,assets/images/flood8.jpg,12h ago,45,7,18,Clear,3,true,true,
+>>>>>>> fa37f4f (V8: Proper Image insert and logic setup, removed the bug that adds the csv to firebase):assets/data/posts.csv

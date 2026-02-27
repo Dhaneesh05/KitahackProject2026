@@ -84,17 +84,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.tealLight,
+                        color: AppColors.of(context).tealLight,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.teal.withValues(alpha: 0.2),
+                            color: AppColors.of(context).teal.withValues(alpha: 0.2),
                             blurRadius: 30,
                             offset: const Offset(0, 10),
                           ),
                         ],
                       ),
-                      child: Icon(Icons.water_drop, color: AppColors.teal, size: 40),
+                      child: Icon(Icons.water_drop, color: AppColors.of(context).teal, size: 40),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
+                        color: AppColors.of(context).textPrimary,
                         letterSpacing: -1.0,
                       ),
                     ),
@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        color: AppColors.of(context).textSecondary,
                         letterSpacing: 2.5,
                       ),
                     ),
@@ -169,14 +169,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       decoration: BoxDecoration(
                         gradient: RadialGradient(
-                          colors: [AppColors.teal, AppColors.tealDeep],
+                          colors: [AppColors.of(context).teal, AppColors.of(context).tealDeep],
                           center: const Alignment(-0.8, -0.6),
                           radius: 2.0,
                         ),
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.teal.withValues(alpha: 0.5),
+                            color: AppColors.of(context).teal.withValues(alpha: 0.5),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),
@@ -236,7 +236,7 @@ class _ToggleButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
-            color: isActive ? AppColors.tealDeep : AppColors.textSecondary,
+            color: isActive ? AppColors.of(context).tealDeep : AppColors.of(context).textSecondary,
           ),
         ),
       ),
@@ -262,11 +262,11 @@ class _GlassTextField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: TextFormField(
         obscureText: obscureText,
-        style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+        style: TextStyle(color: AppColors.of(context).textPrimary, fontWeight: FontWeight.w600),
         decoration: InputDecoration(
-          icon: Icon(icon, color: AppColors.textSecondary, size: 22),
+          icon: Icon(icon, color: AppColors.of(context).textSecondary, size: 22),
           hintText: hintText,
-          hintStyle: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.7)),
+          hintStyle: TextStyle(color: AppColors.of(context).textSecondary.withValues(alpha: 0.7)),
           border: InputBorder.none,
           focusedBorder: InputBorder.none,
           enabledBorder: InputBorder.none,

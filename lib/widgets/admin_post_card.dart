@@ -26,8 +26,8 @@ class _AdminPostCardState extends State<AdminPostCard> {
       case 'danger': return Colors.red.shade500;
       case 'medium': return Colors.orange;
       case 'low': return Colors.blue.shade400;
-      case 'clear': return AppColors.teal;
-      default: return AppColors.textMuted;
+      case 'clear': return const Color(0xFF3FC9A8);
+      default: return const Color(0xFF93AFA8);
     }
   }
 
@@ -130,7 +130,7 @@ class _AdminPostCardState extends State<AdminPostCard> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.teal, width: 2),
+                  borderSide: const BorderSide(color: Color(0xFF3FC9A8), width: 2),
                 ),
               ),
             ),
@@ -715,7 +715,7 @@ class _AdminPostCardState extends State<AdminPostCard> {
                                             child: Center(
                                                 child: CircularProgressIndicator(
                                                     strokeWidth: 2,
-                                                    color: AppColors.teal)));
+                                                    color: AppColors.of(context).teal)));
                                         },
                                       ),
                               ),
@@ -793,7 +793,7 @@ class _AdminPostCardState extends State<AdminPostCard> {
                   _AdminActionBtn(
                     icon: Icons.sync_rounded,
                     label: 'Status',
-                    color: AppColors.teal,
+                    color: AppColors.of(context).teal,
                     onTap: _changeStatus,
                   ),
                   _AdminActionBtn(

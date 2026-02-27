@@ -28,7 +28,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       body: Stack(
         children: [
           // Screen content - leaves room for the floating nav bar
@@ -48,15 +48,15 @@ class _MainScreenState extends State<MainScreen> {
                 filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xD0E8F5EF),
+                    color: AppColors.of(context).glassBg,
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.7),
+                      color: AppColors.of(context).glassBorder,
                       width: 1.2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.teal.withValues(alpha: 0.12),
+                        color: AppColors.of(context).teal.withValues(alpha: 0.12),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -112,7 +112,7 @@ class _NavItem extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.tealLight : Colors.transparent,
+          color: isSelected ? AppColors.of(context).tealLight : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -120,7 +120,7 @@ class _NavItem extends StatelessWidget {
           children: [
             Icon(
               isSelected ? activeIcon : icon,
-              color: isSelected ? AppColors.teal : AppColors.textMuted,
+              color: isSelected ? AppColors.of(context).teal : AppColors.of(context).textMuted,
               size: 22,
             ),
             const SizedBox(height: 3),
@@ -130,7 +130,7 @@ class _NavItem extends StatelessWidget {
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
-                color: isSelected ? AppColors.teal : AppColors.textMuted,
+                color: isSelected ? AppColors.of(context).teal : AppColors.of(context).textMuted,
               ),
             ),
           ],
@@ -140,52 +140,3 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-// Simple alerts placeholder (4th tab)
-class _AlertsPlaceholder extends StatelessWidget {
-  const _AlertsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              Text(
-                'Alerts',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -1,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.notifications_outlined, size: 56, color: AppColors.textMuted),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No active alerts',
-                      style: TextStyle(fontSize: 16, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'You\'re all clear right now.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

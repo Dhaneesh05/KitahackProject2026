@@ -1,17 +1,22 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' hide ActivityType;
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../services/ai_vision_service.dart';
-import '../services/flood_prediction_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/weather_service.dart';
 import '../models/activity.dart';
 import '../models/activity_store.dart';
 import '../models/post_store.dart';
 import 'login_screen.dart';
+import '../widgets/report_details_dialog.dart';
+import '../main.dart';
+import 'location_pin_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -21,31 +26,43 @@ class HomeScreen extends StatelessWidget {
     final ImagePicker picker = ImagePicker();
     
     try {
-      final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 800,
+        imageQuality: 50,
+      );
       
       if (photo != null && context.mounted) {
-        // Show loading indicator
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator(color: AppColors.teal)),
+        // Start the AI analysis in the background immediately
+        final resultFuture = AiVisionService().analyzeDrainImage(photo);
+
+        // Navigate to the location pin screen first.
+        // The user drags the map to confirm the exact flood location.
+        final LatLng? confirmedLocation = await Navigator.push<LatLng>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LocationPinScreen(
+              analysisFuture: resultFuture,
+              imageFile: photo,
+            ),
+          ),
         );
 
-        // Analyze image with Gemini
-        final result = await AiVisionService().analyzeDrainImage(photo);
-        
-        // Close loading indicator
-        if (context.mounted) Navigator.pop(context);
+        // If the user backed out of the location screen, abort.
+        if (!context.mounted) return;
+        if (confirmedLocation == null) return;
 
-        if (context.mounted) {
-          // Show AI Analysis Results and pass the XFile object itself
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: Colors.transparent,
-            isScrollControlled: true,
-            builder: (context) => _AnalysisResultSheet(result: result, imageFile: photo),
-          );
-        }
+        // Now show the AI result + compose sheet with the confirmed location.
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (context) => _AnalysisResultSheet(
+            resultFuture: resultFuture,
+            imageFile: photo,
+            confirmedLocation: confirmedLocation,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -63,7 +80,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: AppColors.of(context).scaffoldBg,
       drawer: _SettingsDrawer(),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -74,7 +91,30 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               // ── App Header ──────────────────────────────────────────
               _AppHeader(),
-              const SizedBox(height: 28),
+              
+              // ── Predictive Alert Banner ──────────────────────────────
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance.collection('system_alerts').doc('current_forecast').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                     return const SizedBox(height: 28); // Placeholder space
+                  }
+                  if (!snapshot.hasData || !snapshot.data!.exists) {
+                    return const SizedBox(height: 28);
+                  }
+                  
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final bool isCritical = data['is_critical'] ?? false;
+                  final String date = data['date'] ?? '';
+
+                  if (!isCritical) return const SizedBox(height: 28);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 20, bottom: 8),
+                    child: _ResidentUrgentAlertCard(date: date),
+                  );
+                },
+              ),
 
               // ── Ecosystem / Flood Risk Card ─────────────────────────
               _FloodRiskCard(),
@@ -88,7 +128,7 @@ class HomeScreen extends StatelessWidget {
                     fontSize: 12,
                     letterSpacing: 2.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: AppColors.of(context).textSecondary,
                   ),
                 ),
               ),
@@ -101,7 +141,7 @@ class HomeScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: AppColors.of(context).textPrimary,
                     letterSpacing: -0.5,
                   ),
                 ),
@@ -112,7 +152,7 @@ class HomeScreen extends StatelessWidget {
                   'Tap to report a blocked or flooded drain nearby',
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textSecondary,
+                    color: AppColors.of(context).textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -126,35 +166,121 @@ class HomeScreen extends StatelessWidget {
                   fontSize: 11,
                   letterSpacing: 2.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+                  color: AppColors.of(context).textSecondary,
                 ),
               ),
               const SizedBox(height: 12),
-              ListenableBuilder(
-                listenable: ActivityStore(),
-                builder: (context, _) {
-                  final activities = ActivityStore().getRecent(limit: 3);
-                  if (activities.isEmpty) {
+              
+              StreamBuilder<QuerySnapshot>(
+                stream: DatabaseService().getActiveReports(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: EdgeInsets.all(24.0),
+                        child: CircularProgressIndicator(color: AppColors.of(context).teal),
+                      ),
+                    );
+                  }
+
+                  // Client-side filter: hide demo reports so only real user submissions show
+                  final realDocs = snapshot.data!.docs.where((d) {
+                    final data = d.data() as Map<String, dynamic>;
+                    final uid = data['userId']?.toString() ?? '';
+                    return !uid.startsWith('demo_user_');
+                  }).toList();
+
+                  if (realDocs.isEmpty) {
+                    return Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Center(
                         child: Text(
-                          'No recent activity yet.',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                          'No recent reports.',
+                          style: TextStyle(color: AppColors.of(context).textSecondary, fontSize: 13),
                         ),
                       ),
                     );
                   }
+
+                  final docs = realDocs.take(3).toList();
+
                   return Column(
-                    children: [
-                      for (int i = 0; i < activities.length; i++) ...[
-                        _ActivityItem(activity: activities[i]),
-                        if (i < activities.length - 1) const SizedBox(height: 8),
-                      ],
-                    ],
+                    children: docs.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      
+                      final String material = data['debrisType'] ?? 'Unknown';
+                      
+                      // Calculate time ago
+                      String timeAgo = 'Just now';
+                      final timestamp = data['timestamp'];
+                      if (timestamp is Timestamp) {
+                        final diff = DateTime.now().difference(timestamp.toDate());
+                        if (diff.inDays > 0) {
+                          timeAgo = '${diff.inDays} day${diff.inDays == 1 ? '' : 's'} ago';
+                        } else if (diff.inHours > 0) {
+                          timeAgo = '${diff.inHours} hr${diff.inHours == 1 ? '' : 's'} ago';
+                        } else if (diff.inMinutes > 0) {
+                          timeAgo = '${diff.inMinutes} min${diff.inMinutes == 1 ? '' : 's'} ago';
+                        }
+                      }
+
+                      // Severity mapping
+                      final dynamic rawScore = data['severityScore'];
+                      int score = 0;
+                      if (rawScore is int) {
+                        score = rawScore;
+                      } else if (rawScore is String) {
+                        if (rawScore.toLowerCase() == 'high') {
+                          score = 85;
+                        } else if (rawScore.toLowerCase() == 'medium') {
+                          score = 65;
+                        } else if (rawScore.toLowerCase() == 'low') {
+                          score = 30;
+                        } else {
+                          score = int.tryParse(rawScore) ?? 0;
+                        }
+                      } else if (rawScore is double) {
+                        score = rawScore.toInt();
+                      }
+
+                      Color color = Colors.green;
+                      if (score >= 80) {
+                        color = Colors.redAccent;
+                      } else if (score >= 60) {
+                        color = Colors.orange;
+                      }
+
+                      // Icon mapping
+                      IconData icon = Icons.water_drop_outlined;
+                      final String lowerMat = material.toLowerCase();
+                      if (lowerMat.contains('plastic') || lowerMat.contains('trash') || lowerMat.contains('garbage')) {
+                        icon = Icons.delete_outline;
+                      } else if (lowerMat.contains('veg') || lowerMat.contains('leaf') || lowerMat.contains('leaves') || lowerMat.contains('branch')) {
+                        icon = Icons.eco_outlined;
+                      } else if (lowerMat.contains('mud') || lowerMat.contains('silt') || lowerMat.contains('soil') || lowerMat.contains('sand')) {
+                        icon = Icons.terrain_outlined;
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: _RecentReportItem(
+                          icon: icon,
+                          title: 'Report: $material',
+                          subtitle: timeAgo,
+                          color: color,
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => ReportDetailsDialog(reportData: data),
+                            );
+                          },
+                        ),
+                      );
+                    }).toList(),
                   );
                 },
               ),
+              
               const SizedBox(height: 24),
             ],
           ),
@@ -171,74 +297,181 @@ class _SettingsDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: AppColors.scaffoldBg,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      width: 320,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.of(context).glassBg.withValues(alpha: 0.8),
+              border: Border(right: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5), width: 1.5)),
+            ),
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 32, 24, 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Settings',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.of(context).textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        GlassCard(
+                          padding: EdgeInsets.all(8),
+                          borderRadius: 12,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.6),
+                          onTap: () => Navigator.pop(context),
+                          child: Icon(Icons.close_rounded, color: AppColors.of(context).textSecondary, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _DrawerItem(
+                    icon: Icons.lock_outline,
+                    title: 'Privacy',
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.accessibility_new_outlined,
+                    title: 'Accessibility',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAccessibilitySheet(context);
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.description_outlined,
+                    title: 'Terms & Conditions',
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const Spacer(),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Divider(height: 1, thickness: 1, color: Colors.black12),
+                  ),
+                  const SizedBox(height: 16),
+                  _DrawerItem(
+                    icon: Icons.logout_rounded,
+                    title: 'Logout',
+                    isDestructive: true,
+                    onTap: () {
+                      Navigator.of(context, rootNavigator: true).pushReplacement(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      );
+                    },
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(28, 16, 24, 24),
+                    child: Text(
+                      'HydroVision v1.0.0',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.of(context).textMuted,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            _DrawerItem(
-              icon: Icons.lock_outline,
-              title: 'Privacy',
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to Privacy
-              },
-            ),
-            _DrawerItem(
-              icon: Icons.accessibility_new_outlined,
-              title: 'Accessibility',
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to Accessibility
-              },
-            ),
-            _DrawerItem(
-              icon: Icons.description_outlined,
-              title: 'Terms & Conditions',
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Navigate to Terms
-              },
-            ),
-            const Spacer(),
-            const Divider(height: 1, thickness: 1, indent: 24, endIndent: 24),
-            const SizedBox(height: 8),
-            _DrawerItem(
-              icon: Icons.logout_rounded,
-              title: 'Logout',
-              onTap: () {
-                Navigator.of(context, rootNavigator: true).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Text(
-                'HydroVision v1.0.0',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showAccessibilitySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.of(context).scaffoldBg.withValues(alpha: 0.8),
+                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.2))),
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Accessibility',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.of(context).textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ValueListenableBuilder<ThemeMode>(
+                      valueListenable: appThemeNotifier,
+                      builder: (context, currentMode, child) {
+                        final isDark = currentMode == ThemeMode.dark;
+                        return GlassCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.55),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                                    color: AppColors.of(context).teal,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    isDark ? 'Light Mode' : 'Dark Mode',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.of(context).textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: isDark,
+                                activeThumbColor: AppColors.of(context).teal,
+                                onChanged: (val) {
+                                  appThemeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -247,28 +480,55 @@ class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final bool isDestructive;
 
   const _DrawerItem({
     required this.icon,
     required this.title,
     required this.onTap,
+    this.isDestructive = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      leading: Icon(icon, color: AppColors.teal, size: 24),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        borderRadius: 16,
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.55),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDestructive 
+                    ? Colors.redAccent.withValues(alpha: 0.15)
+                    : AppColors.of(context).tealDeep.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon, 
+                color: isDestructive ? Colors.redAccent : AppColors.of(context).tealDeep, 
+                size: 20
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.of(context).textPrimary,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AppColors.of(context).textMuted, size: 20),
+          ],
         ),
       ),
-      trailing: Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-      onTap: onTap,
     );
   }
 }
@@ -286,10 +546,10 @@ class _AppHeader extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.tealLight,
+            color: AppColors.of(context).tealLight,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(Icons.water_drop, color: AppColors.teal, size: 22),
+          child: Icon(Icons.water_drop, color: AppColors.of(context).teal, size: 22),
         ),
         const SizedBox(width: 12),
         Column(
@@ -300,7 +560,7 @@ class _AppHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: AppColors.of(context).textPrimary,
                 letterSpacing: -0.5,
               ),
             ),
@@ -309,7 +569,7 @@ class _AppHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: AppColors.of(context).textSecondary,
                 letterSpacing: 1.8,
               ),
             ),
@@ -322,7 +582,7 @@ class _AppHeader extends StatelessWidget {
           onTap: () {
             Scaffold.of(context).openDrawer();
           },
-          child: Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
+          child: Icon(Icons.settings_outlined, color: AppColors.of(context).textSecondary, size: 20),
         ),
       ],
     );
@@ -332,23 +592,78 @@ class _AppHeader extends StatelessWidget {
 // ─────────────────────────────────────────────────────
 //  Flood Risk Card
 // ─────────────────────────────────────────────────────
-class _FloodRiskCard extends StatelessWidget {
+class _FloodRiskCard extends StatefulWidget {
+  @override
+  State<_FloodRiskCard> createState() => _FloodRiskCardState();
+}
+
+class _FloodRiskCardState extends State<_FloodRiskCard> {
+  late final Future<WeatherForecast> _forecastFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _forecastFuture = WeatherService.getLiveForecast();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: FloodPredictionService().getTodayFloodRisk(),
+    return FutureBuilder<WeatherForecast>(
+      future: _forecastFuture,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        // ── Loading shimmer ────────────────────────────────────────────────
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return GlassCard(
-            padding: const EdgeInsets.all(40),
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.teal),
+            padding: const EdgeInsets.all(22),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.4, end: 0.8),
+              duration: const Duration(milliseconds: 1000),
+              curve: Curves.easeInOut,
+              builder: (context, opacity, child) {
+                return Opacity(
+                  opacity: opacity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(height: 16, width: 120, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4))),
+                      const SizedBox(height: 24),
+                      Container(height: 28, width: 180, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4))),
+                      const SizedBox(height: 24),
+                      Container(height: 50, width: 120, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8))),
+                      const SizedBox(height: 16),
+                      Container(height: 4, width: double.infinity, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4))),
+                    ],
+                  ),
+                );
+              },
             ),
           );
         }
 
-        final data = snapshot.data!;
-        final bool isHighRisk = data['riskLevel'] == 'High';
+        // ── Error state ────────────────────────────────────────────────────
+        if (snapshot.hasError) {
+          return GlassCard(
+            padding: const EdgeInsets.all(22),
+            child: Row(
+              children: [
+                Icon(Icons.location_off_outlined, color: AppColors.of(context).textMuted),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Could not fetch weather data.\nPlease allow location access and retry.',
+                    style: TextStyle(fontSize: 13, color: AppColors.of(context).textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // ── Data ready ────────────────────────────────────────────────────
+        final wx = snapshot.data!;
+        final Color activeColor = wx.riskColor;
+        final Color activeBgColor = activeColor.withValues(alpha: 0.15);
+        final IconData activeIcon = wx.filledSegments >= 3 ? Icons.trending_up : Icons.trending_down;
 
         return GlassCard(
           padding: const EdgeInsets.all(22),
@@ -358,15 +673,15 @@ class _FloodRiskCard extends StatelessWidget {
               // Tag row
               Row(
                 children: [
-                  Icon(Icons.water_drop_outlined, color: AppColors.teal, size: 18),
+                  Icon(Icons.water_drop_outlined, color: AppColors.of(context).teal, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    'ML FORECAST',
+                    'LIVE WEATHER',
                     style: TextStyle(
                       fontSize: 11,
                       letterSpacing: 2.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: AppColors.of(context).textSecondary,
                     ),
                   ),
                   const Spacer(),
@@ -374,7 +689,7 @@ class _FloodRiskCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isHighRisk ? Colors.red.withValues(alpha: 0.2) : AppColors.tealLight,
+                      color: activeBgColor,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -383,7 +698,7 @@ class _FloodRiskCard extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.5,
-                        color: isHighRisk ? Colors.redAccent : AppColors.teal,
+                        color: activeColor,
                       ),
                     ),
                   ),
@@ -395,18 +710,18 @@ class _FloodRiskCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: AppColors.of(context).textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.location_on_outlined, color: AppColors.textMuted, size: 14),
+                  Icon(Icons.location_on_outlined, color: AppColors.of(context).textMuted, size: 14),
                   const SizedBox(width: 4),
                   Text(
-                    data['zone'] as String,
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    wx.locality,
+                    style: TextStyle(fontSize: 13, color: AppColors.of(context).textSecondary),
                   ),
                 ],
               ),
@@ -425,29 +740,28 @@ class _FloodRiskCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              data['riskLevel'] as String,
+                              wx.riskLevel,
                               style: TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.w900,
-                                color: isHighRisk ? Colors.redAccent : AppColors.textPrimary,
+                                color: activeColor,
                                 letterSpacing: -2,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Icon(
-                              data['trend'] == 'rising' ? Icons.trending_up : Icons.trending_down,
-                              color: isHighRisk ? Colors.redAccent : AppColors.teal,
+                              activeIcon,
+                              color: activeColor,
                               size: 22,
                             ),
                           ],
                         ),
                         const SizedBox(height: 10),
-                        // Risk progress bar (simulated high risk = 4 segments)
-                        _RiskBar(filledSegments: isHighRisk ? 4 : 1),
+                        _RiskBar(filledSegments: wx.filledSegments, activeColor: activeColor),
                         const SizedBox(height: 8),
                         Text(
-                          'Next 24h rainfall: ${data['predictedRainfall']}',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          'Next 24h rainfall: ${wx.precipitation.toStringAsFixed(1)}mm',
+                          style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary),
                         ),
                       ],
                     ),
@@ -456,9 +770,9 @@ class _FloodRiskCard extends StatelessWidget {
                   // Right: stat cards
                   Column(
                     children: [
-                      _StatMini(value: data['confidence'] as String, label: 'ML Conf.'),
+                      _StatMini(value: 'Open-Meteo', label: 'Source'),
                       const SizedBox(height: 8),
-                      _StatMini(value: '12', label: 'Sensors', accentValue: true),
+                      _StatMini(value: 'GPS', label: 'Location', accentValue: true),
                     ],
                   ),
                 ],
@@ -466,14 +780,15 @@ class _FloodRiskCard extends StatelessWidget {
             ],
           ),
         );
-      }
+      },
     );
   }
 }
 
 class _RiskBar extends StatelessWidget {
   final int filledSegments;
-  const _RiskBar({this.filledSegments = 1});
+  final Color activeColor;
+  const _RiskBar({this.filledSegments = 1, required this.activeColor});
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +799,7 @@ class _RiskBar extends StatelessWidget {
             margin: const EdgeInsets.only(right: 4),
             height: 4,
             decoration: BoxDecoration(
-              color: i < filledSegments ? AppColors.teal : AppColors.textMuted.withValues(alpha: 0.3),
+              color: i < filledSegments ? activeColor : AppColors.of(context).textMuted.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -521,14 +836,14 @@ class _StatMini extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: accentValue ? AppColors.teal : AppColors.textPrimary,
+                  color: accentValue ? AppColors.of(context).teal : AppColors.of(context).textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 label,
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 11, color: AppColors.of(context).textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -591,7 +906,7 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.tealLight.withValues(alpha: 0.6),
+                    color: AppColors.of(context).tealLight.withValues(alpha: 0.6),
                   ),
                 ),
               );
@@ -604,12 +919,12 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [AppColors.teal, AppColors.tealDeep],
+                colors: [AppColors.of(context).teal, AppColors.of(context).tealDeep],
                 center: const Alignment(-0.3, -0.3),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.teal.withValues(alpha: 0.45),
+                  color: AppColors.of(context).teal.withValues(alpha: 0.45),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -618,7 +933,7 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.camera_alt_outlined, color: AppColors.textOnTeal, size: 28),
+                Icon(Icons.camera_alt_outlined, color: AppColors.of(context).textOnTeal, size: 28),
                 const SizedBox(height: 4),
                 Text(
                   'REPORT',
@@ -626,7 +941,7 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.5,
-                    color: AppColors.textOnTeal,
+                    color: AppColors.of(context).textOnTeal,
                   ),
                 ),
               ],
@@ -641,25 +956,37 @@ class _ReportButtonState extends State<_ReportButton> with SingleTickerProviderS
 // ─────────────────────────────────────────────────────
 //  Activity Item  (used in Recent Reports)
 // ─────────────────────────────────────────────────────
-class _ActivityItem extends StatelessWidget {
-  final Activity activity;
-  const _ActivityItem({required this.activity});
+class _RecentReportItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _RecentReportItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       borderRadius: 16,
+      onTap: onTap,
       child: Row(
         children: [
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: activity.color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(activity.icon, color: activity.color, size: 18),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -667,27 +994,22 @@ class _ActivityItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  activity.title,
+                  title,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: AppColors.of(context).textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  activity.subtitle,
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
+                  subtitle,
+                  style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            activity.timeAgo,
-            style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500),
-          ),
+          Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.of(context).textMuted),
         ],
       ),
     );
@@ -698,12 +1020,16 @@ class _ActivityItem extends StatelessWidget {
 //  Analysis Result Sheet  (with post compose + geolocation)
 // ─────────────────────────────────────────────────────
 class _AnalysisResultSheet extends StatefulWidget {
-  final Map<String, dynamic> result;
+  final Future<Map<String, dynamic>> resultFuture;
   final XFile imageFile;
+  /// GPS location confirmed on the LocationPinScreen. When provided the sheet
+  /// pre-fills coordinates and skips the in-sheet manual location button.
+  final LatLng? confirmedLocation;
 
   const _AnalysisResultSheet({
-    required this.result,
+    required this.resultFuture,
     required this.imageFile,
+    this.confirmedLocation,
   });
 
   @override
@@ -712,25 +1038,52 @@ class _AnalysisResultSheet extends StatefulWidget {
 
 class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
   bool _isSubmitting = false;
-  bool _isFetchingLocation = false;
+  bool _isAnalyzing = true;
+  Map<String, dynamic>? _result;
+  String? _analysisError;
 
-  late String _selectedSeverity;
-  final TextEditingController _descController = TextEditingController();
+  bool _isFetchingLocation = false;
   double? _latitude;
   double? _longitude;
   String? _locationLabel;
 
+  final TextEditingController _descController = TextEditingController();
+
   static const _severities = ['Clear', 'Low', 'Medium', 'Danger'];
+  late String _selectedSeverity;
 
   @override
   void initState() {
     super.initState();
-    // Pre-select severity from AI result if available
-    final aiSeverity = widget.result['severity'] ?? 'Low';
-    _selectedSeverity = _severities.firstWhere(
-      (s) => s.toLowerCase() == aiSeverity.toString().toLowerCase(),
-      orElse: () => 'Low',
-    );
+    _selectedSeverity = 'Low';
+    // Pre-fill GPS coordinates from the LocationPinScreen if available
+    if (widget.confirmedLocation != null) {
+      _latitude = widget.confirmedLocation!.latitude;
+      _longitude = widget.confirmedLocation!.longitude;
+      _locationLabel =
+          '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}';
+    }
+    _analyzeImage();
+  }
+
+  Future<void> _analyzeImage() async {
+    try {
+      final res = await widget.resultFuture;
+      if (mounted) {
+        final aiSeverity = res['severity'] ?? 'Low';
+        final matched = _severities.firstWhere(
+          (s) => s.toLowerCase() == aiSeverity.toString().toLowerCase(),
+          orElse: () => 'Low',
+        );
+        setState(() {
+          _result = res;
+          _isAnalyzing = false;
+          _selectedSeverity = matched;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _analysisError = e.toString(); _isAnalyzing = false; });
+    }
   }
 
   @override
@@ -744,7 +1097,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       case 'danger': return Colors.red.shade500;
       case 'medium': return Colors.orange;
       case 'low': return Colors.blue.shade400;
-      default: return AppColors.teal;
+      default: return AppColors.of(context).teal;
     }
   }
 
@@ -814,8 +1167,8 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       );
 
       // 2. Build report data with full post fields
-      final material = widget.result['material'] ?? 'Unknown';
-      final aiSeverity = widget.result['severity'] ?? _selectedSeverity;
+      final material = (_result != null && _result!.containsKey('material')) ? _result!['material'] : 'Unknown';
+      final aiSeverity = (_result != null && _result!.containsKey('severity')) ? _result!['severity'] : _selectedSeverity;
 
       await DatabaseService().submitReport({
         // Post identity
@@ -853,12 +1206,14 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
       store.addPoints(store.currentUser, 50, 'Submitted a flood report');
 
       if (context.mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Report submitted successfully! 🌊'),
-          backgroundColor: AppColors.teal,
-          behavior: SnackBarBehavior.floating,
-        ));
+        Navigator.pop(context); // Close sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Report submitted successfully! 🌊'),
+            backgroundColor: AppColors.of(context).teal,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -875,9 +1230,74 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAnalyzing) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.of(context).scaffoldBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4, decoration: BoxDecoration(color: AppColors.of(context).textMuted.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4)),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                SizedBox(width: 28, height: 28, child: CircularProgressIndicator(color: AppColors.of(context).teal, strokeWidth: 2)),
+                const SizedBox(width: 12),
+                Text('Analyzing Image...', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.of(context).textPrimary, letterSpacing: -0.5)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(height: 60, child: Row(children: [Icon(Icons.auto_awesome, color: AppColors.of(context).teal), const SizedBox(width: 16), Expanded(child: Text('AI is scanning for blockages...', style: TextStyle(color: AppColors.of(context).textSecondary)))])),
+            ),
+            const SizedBox(height: 16),
+            Text('Analyzed image: ${widget.imageFile.name}', style: TextStyle(fontSize: 12, color: AppColors.of(context).textMuted)),
+            const SizedBox(height: 32),
+            SizedBox(height: 56, width: double.infinity, child: ElevatedButton(onPressed: null, style: ElevatedButton.styleFrom(backgroundColor: AppColors.of(context).textMuted.withValues(alpha: 0.3), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 0), child: Text('ANALYZING...', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5, color: AppColors.of(context).textMuted)))),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ],
+        ),
+      );
+    }
+    
+    if (_analysisError != null) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(color: AppColors.of(context).scaffoldBg, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             Center(child: Icon(Icons.error_outline, color: Colors.redAccent, size: 48)),
+             const SizedBox(height: 16),
+             Text('Analysis Failed: $_analysisError', style: TextStyle(color: Colors.redAccent, fontSize: 16), textAlign: TextAlign.center),
+             const SizedBox(height: 24),
+             SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: () => Navigator.pop(context), style: ElevatedButton.styleFrom(backgroundColor: AppColors.of(context).teal, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: Text('Close', style: TextStyle(fontSize: 16, color: AppColors.of(context).textOnTeal)))),
+             SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ]
+        ),
+      );
+    }
+
+    final severity = _result?['severity'] ?? 'Unknown';
+    final material = _result?['material'] ?? 'Unknown';
+    
+    Color severityColor = AppColors.of(context).teal;
+    if (severity == 'High' || severity == 'Error') severityColor = Colors.redAccent;
+    if (severity == 'Medium') severityColor = Colors.orange;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.scaffoldBg,
+        color: AppColors.of(context).scaffoldBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: DraggableScrollableSheet(
@@ -896,7 +1316,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.textMuted.withValues(alpha: 0.3),
+                    color: AppColors.of(context).textMuted.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -906,48 +1326,66 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
             // Header
             Row(
               children: [
-                Icon(Icons.auto_awesome, color: AppColors.teal, size: 26),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text('AI Analysis Complete',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                Icon(Icons.auto_awesome, color: AppColors.of(context).teal, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'AI Analysis Complete',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.of(context).textPrimary,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            Text('AI detected the following — review and complete your post.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(
+              'AI detected the following — review and complete your post.',
+              style: TextStyle(fontSize: 13, color: AppColors.of(context).textSecondary),
+            ),
             const SizedBox(height: 20),
 
             // ── AI Result Card ──────────────────────────────────
             GlassCard(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('AI Detected Severity',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('Blockage Severity', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
                         const SizedBox(height: 4),
-                        Text(widget.result['severity'] ?? 'Unknown',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
-                            color: _severityColor(widget.result['severity'] ?? ''))),
+                        Text(
+                          severity,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: severityColor,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  Container(width: 1, height: 36, color: AppColors.textMuted.withValues(alpha: 0.2)),
-                  const SizedBox(width: 14),
+                  Container(width: 1, height: 40, color: AppColors.of(context).textMuted.withValues(alpha: 0.2)),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Detected Material',
-                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        Text('Detected Material', style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary)),
                         const SizedBox(height: 4),
-                        Text(widget.result['material'] ?? 'Unknown',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        Text(
+                          material,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.of(context).textPrimary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -958,7 +1396,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
             // ── Description Field ───────────────────────────────
             Text('Your Report', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary, letterSpacing: 0.3)),
+              color: AppColors.of(context).textPrimary, letterSpacing: 0.3)),
             const SizedBox(height: 8),
             GlassCard(
               padding: EdgeInsets.zero,
@@ -966,11 +1404,11 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 controller: _descController,
                 maxLines: 4,
                 maxLength: 280,
-                style: const TextStyle(fontSize: 15, height: 1.4),
+                style: TextStyle(fontSize: 15, height: 1.4, color: AppColors.of(context).textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Describe what you see… e.g. "Jalan Ampang completely flooded, water waist-deep" #FloodAlert',
-                  hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
-                  counterStyle: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  hintStyle: TextStyle(color: AppColors.of(context).textMuted, fontSize: 14),
+                  counterStyle: TextStyle(color: AppColors.of(context).textMuted, fontSize: 11),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
                 ),
@@ -980,7 +1418,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
             // ── Severity Selector ───────────────────────────────
             Text('Flood Severity', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary, letterSpacing: 0.3)),
+              color: AppColors.of(context).textPrimary, letterSpacing: 0.3)),
             const SizedBox(height: 10),
             Row(
               children: _severities.map((s) {
@@ -995,20 +1433,20 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: isSelected ? color.withValues(alpha: 0.12) : Colors.grey.shade100,
+                          color: isSelected ? color.withValues(alpha: 0.12) : AppColors.of(context).glassBg.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? color : Colors.grey.shade300,
+                            color: isSelected ? color : AppColors.of(context).textMuted.withValues(alpha: 0.3),
                             width: isSelected ? 2 : 1,
                           ),
                         ),
                         child: Column(
                           children: [
-                            Icon(_severityIcon(s), size: 18, color: isSelected ? color : Colors.grey.shade400),
+                            Icon(_severityIcon(s), size: 18, color: isSelected ? color : AppColors.of(context).textMuted),
                             const SizedBox(height: 4),
                             Text(s, style: TextStyle(
                               fontSize: 11, fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                              color: isSelected ? color : Colors.grey.shade500,
+                              color: isSelected ? color : AppColors.of(context).textMuted,
                             )),
                           ],
                         ),
@@ -1022,7 +1460,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
 
             // ── Geolocation Tag ─────────────────────────────────
             Text('Location Tag', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary, letterSpacing: 0.3)),
+              color: AppColors.of(context).textPrimary, letterSpacing: 0.3)),
             const SizedBox(height: 8),
             GlassCard(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1030,7 +1468,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 children: [
                   Icon(
                     _latitude != null ? Icons.location_on_rounded : Icons.location_off_outlined,
-                    color: _latitude != null ? AppColors.teal : AppColors.textMuted,
+                    color: _latitude != null ? AppColors.of(context).teal : AppColors.of(context).textMuted,
                     size: 22,
                   ),
                   const SizedBox(width: 12),
@@ -1039,7 +1477,7 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                       _locationLabel ?? 'No location tagged yet',
                       style: TextStyle(
                         fontSize: 13,
-                        color: _latitude != null ? AppColors.textPrimary : AppColors.textMuted,
+                        color: _latitude != null ? AppColors.of(context).textPrimary : AppColors.of(context).textMuted,
                         fontWeight: _latitude != null ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
@@ -1050,8 +1488,8 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                     child: ElevatedButton(
                       onPressed: _isFetchingLocation ? null : _fetchLocation,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.teal,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.of(context).teal,
+                        foregroundColor: AppColors.of(context).textOnTeal,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         elevation: 0,
@@ -1066,30 +1504,139 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Analyzed image: ${widget.imageFile.name}',
+              style: TextStyle(fontSize: 12, color: AppColors.of(context).textMuted),
+            ),
             const SizedBox(height: 28),
 
             // ── Submit Button ───────────────────────────────────
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 56,
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : () => _submitToFirebase(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.of(context).teal,
+                  foregroundColor: AppColors.of(context).textOnTeal,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
                 child: _isSubmitting
-                    ? const SizedBox(width: 22, height: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('SUBMIT REPORT',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: AppColors.of(context).textOnTeal, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'CONFIRM REPORT & EARN 50 PTS',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                      ),
               ),
             ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  Resident Urgent Alert Card
+// ─────────────────────────────────────────────────────
+class _ResidentUrgentAlertCard extends StatefulWidget {
+  final String date;
+  const _ResidentUrgentAlertCard({required this.date});
+
+  @override
+  State<_ResidentUrgentAlertCard> createState() => _ResidentUrgentAlertCardState();
+}
+
+class _ResidentUrgentAlertCardState extends State<_ResidentUrgentAlertCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    
+    _colorAnimation = ColorTween(
+      begin: Colors.redAccent.withValues(alpha: 0.15),
+      end: Colors.orangeAccent.withValues(alpha: 0.3),
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _colorAnimation,
+      builder: (context, child) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: _colorAnimation.value,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Text('⛈️', style: TextStyle(fontSize: 32)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'URGENT ALERT',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.redAccent,
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Major storm expected ${widget.date}! Earn 2x Points for reporting blocked drains in your neighborhood today.',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

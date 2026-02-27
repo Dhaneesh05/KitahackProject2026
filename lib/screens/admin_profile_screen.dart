@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/admin_store.dart';
-import '../theme/app_theme.dart';
+
 
 /// The admin's private profile screen with action history & metrics.
 class AdminProfileScreen extends StatefulWidget {
@@ -240,7 +240,7 @@ class _HistoryList extends StatelessWidget {
     switch (type) {
       case AdminActionType.verifiedPost: return Colors.blue;
       case AdminActionType.dispatchSent: return Colors.orange;
-      case AdminActionType.statusChanged: return AppColors.teal;
+      case AdminActionType.statusChanged: return const Color(0xFF3FC9A8);
       case AdminActionType.severityOverride: return Colors.red;
       case AdminActionType.deletedPost: return Colors.red.shade700;
       case AdminActionType.bannedUser: return Colors.red.shade800;
