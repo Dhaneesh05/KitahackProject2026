@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/post.dart';
 import '../services/database_service.dart';
-import '../widgets/firestore_report_card.dart';
+import '../widgets/admin_post_card.dart';
 import '../theme/app_theme.dart';
 
 /// The admin's version of the feed — live from Firestore with admin filter tabs.
@@ -33,19 +33,12 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: StreamBuilder<QuerySnapshot>(
-          stream: DatabaseService().getActiveReports(),
+        child: StreamBuilder<List<Post>>(
+          stream: DatabaseService().getFeedPostsStream(),
           builder: (context, snapshot) {
-            final allDocs = snapshot.data?.docs ?? [];
-            final pendingDocs = allDocs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return (data['status']?.toString().toLowerCase() ?? '') == 'pending';
-            }).toList();
-            final alertDocs = allDocs.where((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              final s = data['severityScore']?.toString().toLowerCase() ?? '';
-              return s == 'danger' || s == 'high';
-            }).toList();
+            final allPosts = snapshot.data ?? [];
+            final pendingPosts = allPosts.where((p) => p.status == PostStatus.pending).toList();
+            final alertPosts = allPosts.where((p) => p.effectiveSeverity.toLowerCase() == 'danger' || p.effectiveSeverity.toLowerCase() == 'high').toList();
 
             return Column(
               children: [
@@ -81,7 +74,7 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
                               ),
                             ),
                             const Spacer(),
-                            if (pendingDocs.isNotEmpty)
+                            if (pendingPosts.isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
@@ -89,7 +82,7 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  '${pendingDocs.length} Pending',
+                                  '${pendingPosts.length} Pending',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -108,10 +101,10 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
                         unselectedLabelColor: AppColors.of(context).textMuted,
                         labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-                        tabs: [
-                          Tab(text: 'All (${allDocs.length})'),
-                          Tab(text: 'Pending (${pendingDocs.length})'),
-                          const Tab(text: 'Alerts 🚨'),
+                        tabs: const [
+                          Tab(text: 'All Reports'),
+                          Tab(text: 'Pending'),
+                          Tab(text: 'Alerts 🚨'),
                         ],
                       ),
                     ],
@@ -121,16 +114,17 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
                 // ── Tab Content ───────────────────────────────
                 Expanded(
                   child: snapshot.connectionState == ConnectionState.waiting
-                      ? Center(child: CircularProgressIndicator(
-                          color: const Color(0xFF1E3A3A), strokeWidth: 2))
-                      : TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _AdminReportList(docs: allDocs),
-                            _AdminReportList(docs: pendingDocs, emptyLabel: 'No pending reports'),
-                            _AdminReportList(docs: alertDocs, emptyLabel: 'No active alerts'),
-                          ],
-                        ),
+                      ? Center(child: CircularProgressIndicator(color: const Color(0xFF1E3A3A), strokeWidth: 2))
+                      : snapshot.hasError
+                          ? _ErrorView(error: snapshot.error.toString())
+                          : TabBarView(
+                              controller: _tabController,
+                              children: [
+                                _AdminPostList(posts: allPosts),
+                                _AdminPostList(posts: pendingPosts),
+                                _AdminPostList(posts: alertPosts),
+                              ],
+                            ),
                 ),
               ],
             );
@@ -141,20 +135,19 @@ class _AdminFeedScreenState extends State<AdminFeedScreen>
   }
 }
 
-// ── Admin Report List ──────────────────────────────────────────────────────────
-class _AdminReportList extends StatelessWidget {
-  final List<QueryDocumentSnapshot> docs;
-  final String emptyLabel;
-  const _AdminReportList({required this.docs, this.emptyLabel = 'No reports'});
+// ─── Post list ───────────────────────────────────────────────────────────────
+class _AdminPostList extends StatelessWidget {
+  final List<Post> posts;
+  const _AdminPostList({required this.posts});
 
   @override
   Widget build(BuildContext context) {
-    if (docs.isEmpty) {
+    if (posts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.inbox_rounded, size: 52, color: AppColors.of(context).textMuted),
           const SizedBox(height: 12),
-          Text(emptyLabel,
+          Text('No reports',
               style: TextStyle(
                   color: AppColors.of(context).textSecondary,
                   fontWeight: FontWeight.w600,
@@ -168,16 +161,35 @@ class _AdminReportList extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 680),
         child: ListView.builder(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          itemCount: docs.length,
-          itemBuilder: (_, i) {
-            final data = docs[i].data() as Map<String, dynamic>;
-            return FirestoreReportCard(
-              data: data,
-              docId: docs[i].id,
-              isAdmin: true,
-            );
-          },
+          itemCount: posts.length,
+          itemBuilder: (_, i) => AdminPostCard(post: posts[i]),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Error view ──────────────────────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  final String error;
+  const _ErrorView({required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.cloud_off_rounded, size: 52, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
+          const Text('Could not load posts',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 8),
+          Text(error,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+        ]),
       ),
     );
   }
