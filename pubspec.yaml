@@ -41,7 +41,6 @@ dependencies:
   geolocator: ^14.0.2
   image_picker: ^1.1.2
   google_generative_ai: ^0.4.7
-  flutter_dotenv: ^6.0.0
   csv: ^6.0.0
   firebase_storage: ^13.0.6
   google_fonts: ^8.0.2
@@ -80,7 +79,6 @@ flutter:
 
   # Add .env to your assets so it can be read at runtime
   assets:
-    - .env
     - assets/data/
     - assets/images/    
 

@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 void main() async {
-  final apiKey = '***REMOVED***'; // Actual Gemini API Key
+  final apiKey = 'AIzaSyBAUCT-MPq6QYqVSRsE1NXDO05WWvX4PlQ'; // Actual Gemini API Key
   final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey');
   
   final request = await HttpClient().getUrl(url);

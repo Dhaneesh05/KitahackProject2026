@@ -1,0 +1,6 @@
+Analyzing hydrovision_app...                                    
+
+warning - Duplicate import - lib\main.dart:3:8 - duplicate_import
+warning - The operand can't be 'null', so the condition is always 'false' - lib\services\ai_vision_service.dart:19:18 - unnecessary_null_comparison
+warning - The operand can't be 'null', so the condition is always 'false' - lib\services\ai_vision_service.dart:74:18 - unnecessary_null_comparison
+

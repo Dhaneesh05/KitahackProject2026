@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
@@ -10,8 +9,7 @@ final ValueNotifier<ThemeMode> appThemeNotifier = ValueNotifier(ThemeMode.light)
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-
+  // Environment variables are now passed via --dart-define-from-file=.env
   // Initialize Firebase using platform defaults
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

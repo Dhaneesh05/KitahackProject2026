@@ -145,6 +145,7 @@ class _AdminPostCardState extends State<AdminPostCard> {
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
                 await _admin.sendDispatch(widget.post, controller.text.trim());
+                if (!ctx.mounted) return;
                 if (mounted) setState(() {});
                 Navigator.pop(ctx);
                 _showSnack('Dispatch sent 🚒');
@@ -194,6 +195,7 @@ class _AdminPostCardState extends State<AdminPostCard> {
                 child: InkWell(
                   onTap: isActive ? null : () async {
                     await _admin.overrideSeverity(widget.post, s);
+                    if (!ctx.mounted) return;
                     if (mounted) setState(() {});
                     ActivityStore().addActivity(Activity(
                       id: 'severity_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',
@@ -267,6 +269,7 @@ class _AdminPostCardState extends State<AdminPostCard> {
                 child: InkWell(
                   onTap: isActive ? null : () async {
                     await _admin.updateStatus(widget.post, s);
+                    if (!ctx.mounted) return;
                     if (mounted) setState(() {});
                     ActivityStore().addActivity(Activity(
                       id: 'status_${widget.post.id}_${DateTime.now().millisecondsSinceEpoch}',

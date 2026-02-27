@@ -41,7 +41,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: '***REMOVED***',
+    apiKey: 'AIzaSyAqpvy53ZpNSe8m6FtXJj25GsTtggFHCQg',
     appId: '1:1066828047560:web:f4c5a742d02727037db1fd',
     messagingSenderId: '1066828047560',
     projectId: 'hyrdovision-app',
@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: '***REMOVED***',
+    apiKey: 'AIzaSyButaqThsZISIhojpWzO5lbwmXrzaZ0YFU',
     appId: '1:1066828047560:android:441c415e6b26fe677db1fd',
     messagingSenderId: '1066828047560',
     projectId: 'hyrdovision-app',
@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: '***REMOVED***',
+    apiKey: 'AIzaSyDYXmGSmuTXWACImq3z8o7BqqG0FWkoRJ4',
     appId: '1:1066828047560:ios:86049619756c62957db1fd',
     messagingSenderId: '1066828047560',
     projectId: 'hyrdovision-app',
@@ -68,7 +68,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: '***REMOVED***',
+    apiKey: 'AIzaSyDYXmGSmuTXWACImq3z8o7BqqG0FWkoRJ4',
     appId: '1:1066828047560:ios:86049619756c62957db1fd',
     messagingSenderId: '1066828047560',
     projectId: 'hyrdovision-app',
@@ -77,7 +77,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: '***REMOVED***',
+    apiKey: 'AIzaSyAqpvy53ZpNSe8m6FtXJj25GsTtggFHCQg',
     appId: '1:1066828047560:web:55c8434bb50976ab7db1fd',
     messagingSenderId: '1066828047560',
     projectId: 'hyrdovision-app',

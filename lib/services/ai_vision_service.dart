@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// Removed flutter_dotenv
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -15,9 +15,9 @@ class AiVisionService {
   /// Analyzes a drain image using Gemini Vision to determine severity and material blockage.
   Future<Map<String, dynamic>> analyzeDrainImage(XFile imageFile) async {
     try {
-      final apiKey = dotenv.env['GEMINI_API_KEY'];
-      if (apiKey == null || apiKey.isEmpty || apiKey == 'your_gemini_api_key_here') {
-        throw Exception('GEMINI_API_KEY is missing or invalid in .env file.');
+      const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+      if (apiKey.isEmpty || apiKey == 'your_gemini_api_key_here') {
+        throw Exception('GEMINI_API_KEY is missing or invalid. Run with --dart-define-from-file=.env');
       }
 
       final model = GenerativeModel(
@@ -70,9 +70,9 @@ Example 4 (Leaves/Branches): {"severity": "Medium", "material": "Vegetation"}.''
   /// Generates a concise safety summary explaining why a specific material blockage is dangerous.
   Future<String> generateReportSummary(String material) async {
     try {
-      final apiKey = dotenv.env['GEMINI_API_KEY'];
-      if (apiKey == null || apiKey.isEmpty || apiKey == 'your_gemini_api_key_here') {
-        throw Exception('GEMINI_API_KEY is missing or invalid in .env file.');
+      const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+      if (apiKey.isEmpty || apiKey == 'your_gemini_api_key_here') {
+        throw Exception('GEMINI_API_KEY is missing or invalid. Run with --dart-define-from-file=.env');
       }
 
       final model = GenerativeModel(
