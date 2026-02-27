@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -8,9 +9,11 @@ import '../services/ai_vision_service.dart';
 import '../services/storage_service.dart';
 import '../services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/weather_service.dart';
 import 'login_screen.dart';
 import '../widgets/report_details_dialog.dart';
 import '../main.dart';
+import 'location_pin_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -27,18 +30,36 @@ class HomeScreen extends StatelessWidget {
       );
       
       if (photo != null && context.mounted) {
-        // Start analyzing image with Gemini
+        // Start the AI analysis in the background immediately
         final resultFuture = AiVisionService().analyzeDrainImage(photo);
-        
-        if (context.mounted) {
-          // Show AI Analysis Results immediately and pass the future
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: Colors.transparent,
-            isScrollControlled: true,
-            builder: (context) => _AnalysisResultSheet(resultFuture: resultFuture, imageFile: photo),
-          );
-        }
+
+        // Navigate to the location pin screen first.
+        // The user drags the map to confirm the exact flood location.
+        final LatLng? confirmedLocation = await Navigator.push<LatLng>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LocationPinScreen(
+              analysisFuture: resultFuture,
+              imageFile: photo,
+            ),
+          ),
+        );
+
+        // If the user backed out of the location screen, abort.
+        if (!context.mounted) return;
+        if (confirmedLocation == null) return;
+
+        // Now show the AI result + compose sheet with the confirmed location.
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (context) => _AnalysisResultSheet(
+            resultFuture: resultFuture,
+            imageFile: photo,
+            confirmedLocation: confirmedLocation,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -159,7 +180,14 @@ class HomeScreen extends StatelessWidget {
                     );
                   }
 
-                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  // Client-side filter: hide demo reports so only real user submissions show
+                  final realDocs = snapshot.data!.docs.where((d) {
+                    final data = d.data() as Map<String, dynamic>;
+                    final uid = data['userId']?.toString() ?? '';
+                    return !uid.startsWith('demo_user_');
+                  }).toList();
+
+                  if (realDocs.isEmpty) {
                     return Padding(
                       padding: EdgeInsets.all(16.0),
                       child: Center(
@@ -171,7 +199,7 @@ class HomeScreen extends StatelessWidget {
                     );
                   }
 
-                  final docs = snapshot.data!.docs.take(3).toList();
+                  final docs = realDocs.take(3).toList();
 
                   return Column(
                     children: docs.map((doc) {
@@ -561,12 +589,26 @@ class _AppHeader extends StatelessWidget {
 // ─────────────────────────────────────────────────────
 //  Flood Risk Card
 // ─────────────────────────────────────────────────────
-class _FloodRiskCard extends StatelessWidget {
+class _FloodRiskCard extends StatefulWidget {
+  @override
+  State<_FloodRiskCard> createState() => _FloodRiskCardState();
+}
+
+class _FloodRiskCardState extends State<_FloodRiskCard> {
+  late final Future<WeatherForecast> _forecastFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _forecastFuture = WeatherService.getLiveForecast();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('system_alerts').doc('current_forecast').snapshots(),
+    return FutureBuilder<WeatherForecast>(
+      future: _forecastFuture,
       builder: (context, snapshot) {
+        // ── Loading shimmer ────────────────────────────────────────────────
         if (snapshot.connectionState == ConnectionState.waiting) {
           return GlassCard(
             padding: const EdgeInsets.all(22),
@@ -595,20 +637,30 @@ class _FloodRiskCard extends StatelessWidget {
           );
         }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const SizedBox.shrink();
+        // ── Error state ────────────────────────────────────────────────────
+        if (snapshot.hasError) {
+          return GlassCard(
+            padding: const EdgeInsets.all(22),
+            child: Row(
+              children: [
+                Icon(Icons.location_off_outlined, color: AppColors.of(context).textMuted),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Could not fetch weather data.\nPlease allow location access and retry.',
+                    style: TextStyle(fontSize: 13, color: AppColors.of(context).textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
-        final data = snapshot.data!.data()!;
-        final bool isHighRisk = data['is_critical'] == true;
-        
-        final String riskText = data['risk_level']?.toString() ?? 'Pending';
-        final String confidenceText = data['confidence']?.toString() ?? '--%';
-        final String rainfallText = data['expected_rain']?.toString() ?? '--mm';
-        
-        final Color activeColor = isHighRisk ? Colors.redAccent : Colors.green.shade500;
-        final Color activeBgColor = isHighRisk ? Colors.red.withValues(alpha: 0.2) : Colors.green.withValues(alpha: 0.15);
-        final IconData activeIcon = isHighRisk ? Icons.trending_up : Icons.trending_down;
+        // ── Data ready ────────────────────────────────────────────────────
+        final wx = snapshot.data!;
+        final Color activeColor = wx.riskColor;
+        final Color activeBgColor = activeColor.withValues(alpha: 0.15);
+        final IconData activeIcon = wx.filledSegments >= 3 ? Icons.trending_up : Icons.trending_down;
 
         return GlassCard(
           padding: const EdgeInsets.all(22),
@@ -621,7 +673,7 @@ class _FloodRiskCard extends StatelessWidget {
                   Icon(Icons.water_drop_outlined, color: AppColors.of(context).teal, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    'ML FORECAST',
+                    'LIVE WEATHER',
                     style: TextStyle(
                       fontSize: 11,
                       letterSpacing: 2.5,
@@ -665,7 +717,7 @@ class _FloodRiskCard extends StatelessWidget {
                   Icon(Icons.location_on_outlined, color: AppColors.of(context).textMuted, size: 14),
                   const SizedBox(width: 4),
                   Text(
-                    'Downtown District, Zone 4',
+                    wx.locality,
                     style: TextStyle(fontSize: 13, color: AppColors.of(context).textSecondary),
                   ),
                 ],
@@ -685,7 +737,7 @@ class _FloodRiskCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              riskText,
+                              wx.riskLevel,
                               style: TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.w900,
@@ -702,11 +754,10 @@ class _FloodRiskCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        // Risk progress bar 
-                        _RiskBar(filledSegments: isHighRisk ? 4 : 1, activeColor: activeColor),
+                        _RiskBar(filledSegments: wx.filledSegments, activeColor: activeColor),
                         const SizedBox(height: 8),
                         Text(
-                          'Next 24h rainfall: $rainfallText',
+                          'Next 24h rainfall: ${wx.precipitation.toStringAsFixed(1)}mm',
                           style: TextStyle(fontSize: 12, color: AppColors.of(context).textSecondary),
                         ),
                       ],
@@ -716,9 +767,9 @@ class _FloodRiskCard extends StatelessWidget {
                   // Right: stat cards
                   Column(
                     children: [
-                      _StatMini(value: confidenceText, label: 'ML Conf.'),
+                      _StatMini(value: 'Open-Meteo', label: 'Source'),
                       const SizedBox(height: 8),
-                      _StatMini(value: '12', label: 'Sensors', accentValue: true),
+                      _StatMini(value: 'GPS', label: 'Location', accentValue: true),
                     ],
                   ),
                 ],
@@ -726,7 +777,7 @@ class _FloodRiskCard extends StatelessWidget {
             ],
           ),
         );
-      }
+      },
     );
   }
 }
@@ -968,10 +1019,14 @@ class _RecentReportItem extends StatelessWidget {
 class _AnalysisResultSheet extends StatefulWidget {
   final Future<Map<String, dynamic>> resultFuture;
   final XFile imageFile;
+  /// GPS location confirmed on the LocationPinScreen. When provided the sheet
+  /// pre-fills coordinates and skips the in-sheet manual location button.
+  final LatLng? confirmedLocation;
 
   const _AnalysisResultSheet({
     required this.resultFuture,
     required this.imageFile,
+    this.confirmedLocation,
   });
 
   @override
@@ -998,6 +1053,13 @@ class _AnalysisResultSheetState extends State<_AnalysisResultSheet> {
   void initState() {
     super.initState();
     _selectedSeverity = 'Low';
+    // Pre-fill GPS coordinates from the LocationPinScreen if available
+    if (widget.confirmedLocation != null) {
+      _latitude = widget.confirmedLocation!.latitude;
+      _longitude = widget.confirmedLocation!.longitude;
+      _locationLabel =
+          '${_latitude!.toStringAsFixed(5)}, ${_longitude!.toStringAsFixed(5)}';
+    }
     _analyzeImage();
   }
 
